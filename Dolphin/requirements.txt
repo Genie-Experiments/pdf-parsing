@@ -1,0 +1,11 @@
+numpy
+omegaconf
+opencv-python
+opencv-python-headless
+pillow
+timm
+torch
+torchvision
+transformers
+accelerate
+pymupdf
