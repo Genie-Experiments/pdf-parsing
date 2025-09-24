@@ -1,72 +1,66 @@
-import os
-import glob
-import subprocess
-from pathlib import Path
-import sys
+import crop_pdf_regions
+from process_pdf_files import process_pdf_files
+from process_json_files import process_all_json_files
+from crop_pdf_regions import create_bbox_adjustment_test
+#from test import simple_coordinate_test
 
-# 1. Load PDF Files from a directory
-def process_pdf_files():
-    """Process all PDF files in the test-data directory using Dolphin model"""
-    
-    # Define paths
-    test_data_dir = "./test-data"
-    results_dir = "./results"
-    dolphin_script = "./Dolphin/demo_page_hf.py"
-    model_path = "./Dolphin/hf_model"
-    
-    # Ensure results directory exists
-    os.makedirs(results_dir, exist_ok=True)
-    
-    # Find all PDF files in test-data directory
-    pdf_pattern = os.path.join(test_data_dir, "*.pdf")
-    pdf_files = glob.glob(pdf_pattern)
-    
-    if not pdf_files:
-        print(f"No PDF files found in {test_data_dir}")
-        return
-    
-    print(f"Found {len(pdf_files)} PDF files to process")
-    
-    # Process each PDF file
-    for pdf_file in pdf_files:
-        try:
-            # Get PDF filename without extension
-            pdf_name = Path(pdf_file).stem
-            print(f"\nProcessing: {pdf_name}")
-            
-            # 2. For each PDF file, create a seperate directory with the same name as the PDF file (without the .pdf extension)
-            output_dir = os.path.join(results_dir, pdf_name)
-            os.makedirs(output_dir, exist_ok=True)
+from convert_html_to_markdown import convert_html_to_markdown
 
-            # 3. Run the inference command on each PDF file and save the output in the respective directory created in step 2.
-            
-            # Construct the command
-            cmd = [
-                sys.executable, 
-                dolphin_script,
-                "--model_path", model_path,
-                "--input_path", pdf_file,
-                "--save_dir", output_dir
-            ]
-            
-            print(f"Running command: {' '.join(cmd)}")
-            
-            # Execute the command
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=".")
-            
-            if result.returncode == 0:
-                print(f"✓ Successfully processed {pdf_name}")
-                if result.stdout:
-                    print(f"Output: {result.stdout}")
-            else:
-                print(f"✗ Error processing {pdf_name}")
-                print(f"Error: {result.stderr}")
-                
-        except Exception as e:
-            print(f"✗ Exception while processing {pdf_file}: {str(e)}")
-    
-    print("\nPDF processing pipeline completed!")
 
+# Define paths
+DATA_DIRECTORY = "./temp-test-dir"
+OUTPUT_DIRECTORY = "./results"
+DOLPHIN_SCRIPT = "./Dolphin/demo_page_hf.py"
+MODEL_PATH = "./Dolphin/hf_model"
+
+SEGMENTS_TO_EXTRACT = ["tab", "code", "fig"]
 
 if __name__ == "__main__":
-    process_pdf_files()
+    # 1. Process PDF Files from a directory
+    process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
+
+    # 2. Process all JSON files in results directory
+    #process_all_json_files(OUTPUT_DIRECTORY, SEGMENTS_TO_EXTRACT)
+
+    # crop_pdf_regions usage example (uncomment to use)
+    # # Extract as cropped PDFs
+    #boxes = [528, 140, 869, 571]
+
+    #boxes = [131, 561, 633, 647]
+    
+    #pdf_file = "./temp-test-dir/Extreme_AirDefense_Essentials_v23r3_Release_Notes.pdf"
+    # # pdf_file = "./test-data/page-21.pdf"
+
+    # out_pdf = crop_pdf_with_margin_adjustment(pdf_file, boxes, output_prefix="output/crop_table", page_number = 3, as_image=False)
+    # print("Cropped PDF:", out_pdf)
+
+    # out_img = crop_pdf_with_margin_adjustment(pdf_file, boxes, output_prefix="output/crop_table", page_number = 3, as_image=True)
+    # print("Cropped Image:", out_img)
+
+    #simple_coordinate_test(pdf_file, boxes, page_number=3)
+
+    # This should work better based on your debug image
+# result = auto_crop_pdf_table(
+#     pdf_path=pdf_file,
+#     bbox=boxes,
+#     output_prefix="output/table_auto_fixed",
+#     page_number=3,
+#     as_image=True,
+#     debug=True
+# )
+
+#     create_bbox_adjustment_test(
+#     pdf_path=pdf_file, 
+#     bbox=boxes,
+#     page_number=3
+# )
+
+#     # 3. Convert HTML to Markdown
+#     html_text = "<table><tr><td>ID</td><td>Description</td></tr><tr><td>02434953</td><td>Extreme AirDefense Essentials might generate false rogue AP alarms</td></tr><tr><td>02590366</td><td>due to incorrectly identifying neighboring Extreme Networks AP</td></tr><tr><td>02666601</td><td>devices using the same network policy as rogue APs.</td></tr></table>"
+
+#     result = convert_html_to_markdown(
+#     html_text, 
+#     enable_all_plugins=True
+# )
+
+#     print (result)

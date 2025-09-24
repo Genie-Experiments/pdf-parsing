@@ -10,6 +10,8 @@ import os
 import re
 from dataclasses import dataclass
 from typing import List, Tuple
+import uuid
+import time
 
 import cv2
 import numpy as np
@@ -401,6 +403,25 @@ def prepare_image(image) -> Tuple[np.ndarray, ImageDimensions]:
 
         # Apply padding
         padded_image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+
+        # Save the processed padded image with unique filename
+        try:
+            # Hardcoded save directory
+            processed_dir = r"d:\pdf-parsing-pipeline\Processed-Images-By-Dolphin"
+            os.makedirs(processed_dir, exist_ok=True)
+            
+            # Generate unique filename using timestamp and UUID
+            timestamp = int(time.time() * 1000)  # milliseconds since epoch
+            unique_id = str(uuid.uuid4())[:8]  # first 8 characters of UUID
+            unique_filename = f"processed_{timestamp}_{unique_id}.png"
+            
+            processed_image_path = os.path.join(processed_dir, unique_filename)
+            cv2.imwrite(processed_image_path, padded_image)
+            print(f"✓ Saved processed padded image: {unique_filename}")
+            
+        except Exception as save_error:
+            # Don't let saving errors affect the main functionality
+            print(f"Warning: Could not save processed image: {str(save_error)}")
 
         padded_h, padded_w = padded_image.shape[:2]
 

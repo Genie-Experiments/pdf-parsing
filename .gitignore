@@ -13,3 +13,6 @@ venv/
 test-data/
 # Results Directory
 results/
+
+# env file
+.env

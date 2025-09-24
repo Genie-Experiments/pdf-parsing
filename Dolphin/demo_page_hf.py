@@ -218,13 +218,14 @@ def process_elements(layout_results, padded_image, dims, model, max_batch_size, 
                     
                     figure_filename = save_figure_to_local(pil_crop, save_dir, image_name, reading_order)
                     
-                    # For figure regions, store relative path instead of base64
+                    # For figure regions, store both coordinate sets
                     figure_results.append(
                         {
                             "label": label,
                             "text": f"![Figure](figures/{figure_filename})",
                             "figure_path": f"figures/{figure_filename}",
-                            "bbox": [orig_x1, orig_y1, orig_x2, orig_y2],
+                            "bbox": [orig_x1, orig_y1, orig_x2, orig_y2],  # Original image coordinates
+                            "padded_bbox": [x1, y1, x2, y2],  # Padded image coordinates
                             "reading_order": reading_order,
                         }
                     )
@@ -234,7 +235,8 @@ def process_elements(layout_results, padded_image, dims, model, max_batch_size, 
                     element_info = {
                         "crop": pil_crop,
                         "label": label,
-                        "bbox": [orig_x1, orig_y1, orig_x2, orig_y2],
+                        "bbox": [orig_x1, orig_y1, orig_x2, orig_y2],  # Original image coordinates
+                        "padded_bbox": [x1, y1, x2, y2],  # Padded image coordinates
                         "reading_order": reading_order,
                     }
                     
@@ -295,6 +297,7 @@ def process_element_batch(elements, model, prompt, max_batch_size=None):
             results.append({
                 "label": elem["label"],
                 "bbox": elem["bbox"],
+                "padded_bbox": elem["padded_bbox"],  # Padded coordinates
                 "text": result.strip(),
                 "reading_order": elem["reading_order"],
             })
