@@ -38,3 +38,12 @@ def convert_html_to_markdown(html_content, enable_table_plugin=True):
     except Exception as e:
         print(f"Error running html2markdown: {e}")
         return None
+
+# Usage example with table
+html_content = "<table><tr><td>ID</td><td>Description</td></tr><tr><td>02434953</td><td>Extreme AirDefense Essentials might generate false rogue AP alarms</td></tr><tr><td>02590366</td><td>due to incorrectly identifying neighboring Extreme Networks AP</td></tr><tr><td>02666601</td><td>devices using the same network policy as rogue APs.</td></tr></table>"
+
+markdown_result = convert_html_to_markdown(html_content, enable_table_plugin=True)
+if markdown_result:
+    print(f"Converted markdown:\n{markdown_result}")
+else:
+    print("Conversion failed")
