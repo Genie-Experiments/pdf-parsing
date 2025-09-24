@@ -9,11 +9,6 @@ wheels/
 # Virtual environments
 venv/
 
-# PDF Test Documents
-test-data/
-# Results Directory
-results/
-
 # env file
 .env
 
