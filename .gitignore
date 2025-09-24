@@ -16,3 +16,6 @@ results/
 
 # env file
 .env
+
+# Dolphin model files
+Dolphin/hf_model/*.safetensors
