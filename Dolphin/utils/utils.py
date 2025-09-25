@@ -407,7 +407,8 @@ def prepare_image(image) -> Tuple[np.ndarray, ImageDimensions]:
         # Save the processed padded image with unique filename
         try:
             # Hardcoded save directory
-            processed_dir = r"d:\pdf-parsing-pipeline\Processed-Images-By-Dolphin"
+            processed_dir = os.path.join(os.path.dirname(__file__), "..", "..", "Processed-Images-By-Dolphin")
+            processed_dir = os.path.abspath(processed_dir)
             os.makedirs(processed_dir, exist_ok=True)
             
             # Generate unique filename using timestamp and UUID
