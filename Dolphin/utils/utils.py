@@ -380,11 +380,13 @@ def process_coordinates(coords, padded_image, dims: ImageDimensions, previous_bo
         return 0, 0, 100, 100, orig_x1, orig_y1, orig_x2, orig_y2, [0, 0, 100, 100]
 
 
-def prepare_image(image) -> Tuple[np.ndarray, ImageDimensions]:
+def prepare_image(image, pdf_name=None, page_number=None) -> Tuple[np.ndarray, ImageDimensions]:
     """Load and prepare image with padding while maintaining aspect ratio
 
     Args:
         image: PIL image
+        pdf_name: Name of the PDF file (without extension) for organizing images
+        page_number: Page number for naming the image file
 
     Returns:
         tuple: (padded_image, image_dimensions)
@@ -404,19 +406,32 @@ def prepare_image(image) -> Tuple[np.ndarray, ImageDimensions]:
         # Apply padding
         padded_image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
-        # Save the processed padded image with unique filename
+        # Save the processed padded image with organized filename
         try:
             # Hardcoded save directory
             processed_dir = os.path.join(os.path.dirname(__file__), "..", "..", "Processed-Images-By-Dolphin")
             processed_dir = os.path.abspath(processed_dir)
-            os.makedirs(processed_dir, exist_ok=True)
             
-            # Generate unique filename using timestamp and UUID
-            timestamp = int(time.time() * 1000)  # milliseconds since epoch
-            unique_id = str(uuid.uuid4())[:8]  # first 8 characters of UUID
-            unique_filename = f"processed_{timestamp}_{unique_id}.png"
+            # Create PDF-specific subdirectory if pdf_name is provided
+            if pdf_name:
+                pdf_dir = os.path.join(processed_dir, pdf_name)
+                os.makedirs(pdf_dir, exist_ok=True)
+                
+                # Generate organized filename
+                if page_number is not None:
+                    unique_filename = f"page-{page_number}.png"
+                else:
+                    unique_filename = f"{pdf_name}.png"
+                    
+                processed_image_path = os.path.join(pdf_dir, unique_filename)
+            else:
+                # Fallback to original naming scheme for non-PDF files
+                os.makedirs(processed_dir, exist_ok=True)
+                timestamp = int(time.time() * 1000)  # milliseconds since epoch
+                unique_id = str(uuid.uuid4())[:8]  # first 8 characters of UUID
+                unique_filename = f"processed_{timestamp}_{unique_id}.png"
+                processed_image_path = os.path.join(processed_dir, unique_filename)
             
-            processed_image_path = os.path.join(processed_dir, unique_filename)
             cv2.imwrite(processed_image_path, padded_image)
             print(f"✓ Saved processed padded image: {unique_filename}")
             

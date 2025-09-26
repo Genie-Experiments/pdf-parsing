@@ -78,7 +78,24 @@ def process_single_image(image, model, save_dir, image_name, max_batch_size, sav
     layout_output = model.chat("Parse the reading order of this document.", image)
 
     # Stage 2: Element-level content parsing
-    padded_image, dims = prepare_image(image)
+    # Extract PDF name and page number for organized image saving
+    pdf_name = None
+    page_number = None
+    
+    # Check if this is a PDF page (format: "pdfname_page_001")
+    if "_page_" in image_name:
+        parts = image_name.split("_page_")
+        if len(parts) == 2:
+            pdf_name = parts[0]
+            try:
+                page_number = int(parts[1])
+            except ValueError:
+                page_number = None
+    else:
+        # For single images, use the image name as pdf_name
+        pdf_name = image_name
+    
+    padded_image, dims = prepare_image(image, pdf_name=pdf_name, page_number=page_number)
     recognition_results = process_elements(layout_output, padded_image, dims, model, max_batch_size, save_dir, image_name)
 
     # Save outputs only if requested (skip for PDF pages)

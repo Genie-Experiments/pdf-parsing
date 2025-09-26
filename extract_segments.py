@@ -29,7 +29,7 @@ def extract_segments(json_file_path, segments_to_extract:list):
                     print(f"  HTML Content :\n{text}")
                     
                     # Convert HTML table to markdown
-                    markdown_content = convert_html_to_markdown(text, enable_table_plugin=True)
+                    markdown_content = convert_html_to_markdown(text, enable_table_plugin=True, verbose=True)
                     
                     if markdown_content:
                         print(f"\n  Converted to Markdown:")

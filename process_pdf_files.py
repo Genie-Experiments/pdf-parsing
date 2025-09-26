@@ -5,15 +5,26 @@ from pathlib import Path
 import sys
 
 def process_pdf_files(data_dir, results_dir, dolphin_script, model_path):
-
-    """Process all PDF files in the test-data directory using Dolphin model"""
+    """
+    Process all PDF files recursively in the data directory using Dolphin model.
+    Maintains the same directory structure in the results directory.
+    
+    Args:
+        data_dir (str): Root directory to search for PDF files
+        results_dir (str): Root directory where results will be saved
+        dolphin_script (str): Path to the Dolphin processing script
+        model_path (str): Path to the Dolphin model
+    """
+    
+    # Convert to Path objects for easier manipulation
+    data_path = Path(data_dir)
+    results_path = Path(results_dir)
     
     # Ensure results directory exists
-    os.makedirs(results_dir, exist_ok=True)
+    results_path.mkdir(parents=True, exist_ok=True)
     
-    # Find all PDF files in test-data directory
-    pdf_pattern = os.path.join(data_dir, "*.pdf")
-    pdf_files = glob.glob(pdf_pattern)
+    # Find all PDF files recursively
+    pdf_files = list(data_path.rglob("*.pdf"))
     
     if not pdf_files:
         print(f"No PDF files found in {data_dir}")
@@ -25,25 +36,30 @@ def process_pdf_files(data_dir, results_dir, dolphin_script, model_path):
     for pdf_file in pdf_files:
         try:
             # Get PDF filename without extension
-            pdf_name = Path(pdf_file).stem
-            print(f"\nProcessing: {pdf_name}")
+            pdf_name = pdf_file.stem
             
-            # 2. For each PDF file, create a seperate directory with the same name as the PDF file (without the .pdf extension)
-            output_dir = os.path.join(results_dir, pdf_name)
-            os.makedirs(output_dir, exist_ok=True)
-
-            # 3. Run the inference command on each PDF file and save the output in the respective directory created in step 2.
+            # Calculate relative path from data_dir to maintain directory structure
+            relative_path = pdf_file.relative_to(data_path)
+            relative_dir = relative_path.parent
             
-            # Construct the command
+            print(f"\nProcessing: {relative_path}")
+            
+            # Create output directory maintaining the same structure
+            # Structure: results_dir/relative_dir/pdf_name/
+            output_dir = results_path / relative_dir / pdf_name
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Run the inference command on each PDF file and save the output in the respective directory
             cmd = [
                 sys.executable, 
                 dolphin_script,
                 "--model_path", model_path,
-                "--input_path", pdf_file,
-                "--save_dir", output_dir
+                "--input_path", str(pdf_file),
+                "--save_dir", str(output_dir)
             ]
             
             print(f"Running command: {' '.join(cmd)}")
+            print(f"Output directory: {output_dir}")
             
             # Execute the command
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=".")
