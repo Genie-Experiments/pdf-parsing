@@ -52,5 +52,10 @@ def get_json_files_list(results_directory):
     Returns:
         list: List of JSON file paths
     """
-    json_pattern = os.path.join(results_directory, "*/recognition_json/*.json")
-    return glob.glob(json_pattern)
+    # Convert to Path object for easier manipulation
+    results_path = Path(results_directory)
+    
+    # Find all JSON files recursively
+    json_files = list(results_path.rglob("*.json"))
+    
+    return [str(json_file) for json_file in json_files]

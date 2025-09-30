@@ -1,6 +1,9 @@
 import json
 from convert_html_to_markdown import convert_html_to_markdown
 from replace_html_with_markdown import replace_html_with_markdown
+from utils.clean_and_format_code import clean_and_format_code
+from utils.search_code_in_markdown import search_code_in_markdown
+from utils.replace_code_in_markdown import replace_code_in_markdown
 
 def extract_segments(json_file_path, segments_to_extract:list):
     # Load the recognition.json file
@@ -47,6 +50,40 @@ def extract_segments(json_file_path, segments_to_extract:list):
                             print(f"  ✗ Failed to replace HTML with markdown")
                     else:
                         print("  Failed to convert HTML to markdown")
+                
+                # Special handling for code elements
+                elif label == "code":
+                    print(f"  Raw Code Content :\n{text}")
+                    
+                    # Clean and format the raw code
+                    cleaned_code = clean_and_format_code(text)
+                    
+                    if cleaned_code:
+                        print(f"\n  Cleaned and Formatted Code:")
+                        print(f"  {'-' * 40}")
+                        print(cleaned_code)
+                        print(f"  {'-' * 40}")
+                        
+                        # Search for the raw code in the markdown file
+                        print(f"\n  Searching for raw code in markdown file...")
+                        search_result = search_code_in_markdown(text, json_file_path)
+                        
+                        if search_result and search_result['found']:
+                            print(f"  ✓ Found code at line {search_result['line_number']} ({search_result['match_type']} match)")
+                            
+                            # Replace the raw code with cleaned code in markdown
+                            print(f"\n  Replacing raw code with cleaned code...")
+                            success = replace_code_in_markdown(text, cleaned_code, json_file_path)
+                            
+                            if success:
+                                print(f"  ✓ Raw code successfully replaced with cleaned code!")
+                            else:
+                                print(f"  ✗ Failed to replace raw code with cleaned code")
+                        else:
+                            print(f"  ✗ Raw code not found in markdown file - cannot replace")
+                    else:
+                        print("  ✗ Failed to clean and format code")
+                
                 else:
                     print(f"  Text/Content :\n{text}")
 

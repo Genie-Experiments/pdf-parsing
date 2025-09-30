@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from utils.get_markdown_file_path import get_markdown_file_path
 
 def replace_html_with_markdown(original_html, markdown_text, json_file_path):
     """
@@ -16,17 +17,7 @@ def replace_html_with_markdown(original_html, markdown_text, json_file_path):
     """
     try:
         # Extract the markdown file path from JSON file path
-        # Example: results/page-04/recognition_json/page-04.json -> results/page-04/markdown/page-04.md
-        json_path = Path(json_file_path)
-        
-        # Get the parent directory (e.g., results/page-04)
-        parent_dir = json_path.parent.parent
-        
-        # Get the base filename without extension (e.g., page-04)
-        base_filename = json_path.stem
-        
-        # Construct the markdown file path
-        markdown_file_path = parent_dir / "markdown" / f"{base_filename}.md"
+        markdown_file_path = get_markdown_file_path(json_file_path)
         
         # Check if markdown file exists
         if not markdown_file_path.exists():
