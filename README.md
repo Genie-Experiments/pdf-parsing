@@ -6,6 +6,7 @@ A comprehensive PDF document parsing pipeline that uses ByteDance's Dolphin AI m
 - **Batch PDF Processing**: Process multiple PDF files in a directory simultaneously
 - **AI-Powered Document Analysis**: Uses Dolphin model for intelligent document layout understanding
 - **HTML to Markdown Conversion**: Automatically converts extracted HTML tables(by Dolphin) to clean Markdown format
+- **LLM-Enhanced Code Processing**: Optional high-quality code extraction using OpenAI GPT-4o Vision API
 - **Structured Output**: Generates organized JSON and Markdown outputs for each processed document
 
 ## 📋 Prerequisites
@@ -26,9 +27,13 @@ cd pdf-parsing-pipeline
 
 ### 2. Install Dependencies
 
-Install the required Python packages from the Dolphin requirements:
+Install the required Python packages:
 
 ```bash
+# Install main project dependencies
+pip install -e .
+
+# Install Dolphin model dependencies
 pip install -r Dolphin/requirements.txt
 ```
 
@@ -38,7 +43,21 @@ The main dependencies include:
 - `pillow` (Image processing)
 - `pymupdf` (PDF processing)
 - `opencv-python` (Computer vision)
+- `openai` (For LLM-based code processing)
+- `python-dotenv` (Environment variables)
 - And other supporting libraries
+
+### 3. Configure Environment Variables (Optional)
+
+For LLM-based code processing, create a `.env` file:
+
+```bash
+cp .env.example .env
+# Edit .env and add your OpenAI API key
+```
+
+Required environment variables:
+- `OPENAI_API_KEY`: Your OpenAI API key (required only if using LLM code processing)
 
 ### 3. Download the Dolphin Model
 
@@ -80,11 +99,31 @@ OUTPUT_DIRECTORY = "./results"        # Directory for output results
 DOLPHIN_SCRIPT = "./Dolphin/demo_page_hf.py"  # Dolphin inference script
 MODEL_PATH = "./Dolphin/hf_model"     # Path to downloaded Dolphin model
 
+# Configuration flags
+PROCESS_CODE_USING_LLM = False        # Enable LLM-based code processing (requires OpenAI API key)
+SEGMENTS_TO_EXTRACT = ["tab", "code"] # Types of segments to extract and process
+```
+
 ### Configuration Options:
 
 - **DATA_DIRECTORY**: Path to the folder containing PDF files you want to process
 - **OUTPUT_DIRECTORY**: Path where processed results will be saved
 - **MODEL_PATH**: Path to the Dolphin model (should match where you downloaded it)
+- **PROCESS_CODE_USING_LLM**: Enable high-quality code extraction using OpenAI GPT-4o Vision API
+- **SEGMENTS_TO_EXTRACT**: List of segment types to extract (supported: "tab", "code", "fig")
+
+### LLM Code Processing Feature
+
+When `PROCESS_CODE_USING_LLM=True`, the pipeline will:
+1. **Detect code blocks** using the Dolphin model
+2. **Extract bounding box coordinates** for each code block
+3. **Locate the corresponding page image** in `Processed-Images-By-Dolphin/`
+4. **Crop the code section** from the page image
+5. **Send the cropped image** to OpenAI GPT-4o Vision API
+6. **Extract and format code** with high accuracy
+7. **Replace original text** with the LLM-processed code in Markdown files
+
+This feature provides significantly better code extraction quality compared to traditional OCR methods, especially for complex code with special characters, indentation, and formatting.
 ## 📁 Project Structure
 
 ```

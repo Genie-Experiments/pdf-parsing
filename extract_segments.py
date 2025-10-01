@@ -9,8 +9,9 @@ from utils.process_figure import (
     generate_figure_description, 
     search_and_replace_figure_in_markdown
 )
+from utils.process_code_with_llm import process_code_with_llm
 
-def extract_segments(json_file_path, segments_to_extract:list):
+def extract_segments(json_file_path, segments_to_extract:list, process_code_using_llm=False):
     # Load the recognition.json file
     with open(json_file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -60,15 +61,44 @@ def extract_segments(json_file_path, segments_to_extract:list):
                 elif label == "code":
                     print(f"  Raw Code Content :\n{text}")
                     
-                    # Clean and format the raw code
-                    cleaned_code = clean_and_format_code(text)
+                    # Determine which processing method to use
+                    processed_code = None
+                    processing_method = "traditional"
                     
-                    if cleaned_code:
-                        print(f"\n  Cleaned and Formatted Code:")
-                        print(f"  {'-' * 40}")
-                        print(cleaned_code)
-                        print(f"  {'-' * 40}")
+                    # Try LLM processing if enabled
+                    if process_code_using_llm:
+                        print(f"\n  Processing code with LLM vision (high quality mode)...")
+                        try:
+                            processed_code = process_code_with_llm(element, json_file_path)
+                            if processed_code:
+                                processing_method = "LLM"
+                                print(f"  ✓ Successfully processed code with LLM!")
+                                print(f"\n  LLM-Processed Code:")
+                                print(f"  {'-' * 40}")
+                                print(processed_code)
+                                print(f"  {'-' * 40}")
+                            else:
+                                print(f"  ✗ LLM processing failed, falling back to traditional processing...")
+                        except Exception as e:
+                            print(f"  ✗ LLM processing error: {str(e)}")
+                            print(f"  Falling back to traditional processing...")
+                    
+                    # Use traditional text-based processing if LLM failed or disabled
+                    if not processed_code:
+                        print(f"\n  {'Using traditional text-based code processing...' if not process_code_using_llm else 'Falling back to traditional processing...'}")
+                        processed_code = clean_and_format_code(text)
+                        processing_method = "traditional"
                         
+                        if processed_code:
+                            print(f"\n  Cleaned and Formatted Code:")
+                            print(f"  {'-' * 40}")
+                            print(processed_code)
+                            print(f"  {'-' * 40}")
+                        else:
+                            print("  ✗ Failed to clean and format code")
+                    
+                    # Replace code in markdown if we have processed code
+                    if processed_code:
                         # Search for the raw code in the markdown file
                         print(f"\n  Searching for raw code in markdown file...")
                         search_result = search_code_in_markdown(text, json_file_path)
@@ -76,14 +106,15 @@ def extract_segments(json_file_path, segments_to_extract:list):
                         if search_result and search_result['found']:
                             print(f"  ✓ Found code at line {search_result['line_number']} ({search_result['match_type']} match)")
                             
-                            # Replace the raw code with cleaned code in markdown
-                            print(f"\n  Replacing raw code with cleaned code...")
-                            success = replace_code_in_markdown(text, cleaned_code, json_file_path)
+                            # Replace the raw code with processed code in markdown
+                            method_label = "LLM-processed" if processing_method == "LLM" else "cleaned"
+                            print(f"\n  Replacing raw code with {method_label} code...")
+                            success = replace_code_in_markdown(text, processed_code, json_file_path)
                             
                             if success:
-                                print(f"  ✓ Raw code successfully replaced with cleaned code!")
+                                print(f"  ✓ Raw code successfully replaced with {method_label} code!")
                             else:
-                                print(f"  ✗ Failed to replace raw code with cleaned code")
+                                print(f"  ✗ Failed to replace raw code with {method_label} code")
                         else:
                             print(f"  ✗ Raw code not found in markdown file - cannot replace")
                     else:
