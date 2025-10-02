@@ -1,9 +1,9 @@
 import os
 import glob
 from pathlib import Path
-from extract_segments import extract_segments
+from refine_segments import refine_segments
 
-def process_all_json_files(results_directory, segments_to_extract, process_code_using_llm=False):
+def process_all_json_files(results_directory, segments_to_extract, process_code_using_llm=False, process_figures_using_llm=False):
     """
     Process all JSON files in the results directory using extract_segments function
     
@@ -32,7 +32,7 @@ def process_all_json_files(results_directory, segments_to_extract, process_code_
             print(f"{'='*60}")
             
             # Extract segments from this JSON file
-            extract_segments(json_file, segments_to_extract, process_code_using_llm)
+            refine_segments(json_file, segments_to_extract, process_code_using_llm, process_figures_using_llm)
             
         except Exception as e:
             print(f"✗ Error processing {json_file}: {str(e)}")

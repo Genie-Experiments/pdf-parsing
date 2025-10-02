@@ -11,7 +11,7 @@ from utils.process_figure import (
 )
 from utils.process_code_with_llm import process_code_with_llm
 
-def extract_segments(json_file_path, segments_to_extract:list, process_code_using_llm=False):
+def refine_segments(json_file_path, segments_to_extract:list, process_code_using_llm=False, process_figures_using_llm=False):
     # Load the recognition.json file
     with open(json_file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -121,7 +121,7 @@ def extract_segments(json_file_path, segments_to_extract:list, process_code_usin
                         print("  ✗ Failed to clean and format code")
                 
                 # Special handling for figure elements
-                elif label == "fig":
+                elif label == "fig" and process_figures_using_llm:
                     print(f"  Figure Text/Reference :\n{text}")
                     
                     # Get figure information and context

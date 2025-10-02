@@ -7,6 +7,7 @@ A comprehensive PDF document parsing pipeline that uses ByteDance's Dolphin AI m
 - **AI-Powered Document Analysis**: Uses Dolphin model for intelligent document layout understanding
 - **HTML to Markdown Conversion**: Automatically converts extracted HTML tables(by Dolphin) to clean Markdown format
 - **LLM-Enhanced Code Processing**: Optional high-quality code extraction using OpenAI GPT-4o Vision API
+- **Intelligent Section Hierarchy Fixing**: Automatically corrects markdown heading levels using TOC JSON structure matching
 - **Structured Output**: Generates organized JSON and Markdown outputs for each processed document
 
 ## 📋 Prerequisites
@@ -178,7 +179,44 @@ The pipeline will automatically:
 5. **Convert** HTML tables to clean Markdown format
 6. **Save** structured results in JSON and Markdown formats
 
-### 4. Check Results
+### 4. Fix Markdown Section Hierarchy (New Feature)
+
+The pipeline now includes an intelligent batch processing feature that fixes markdown section hierarchy by matching against Table of Contents (TOC) JSON files:
+
+```bash
+# Preview what files will be processed (dry run)
+python batch_fix_sections.py --dry-run
+
+# Fix all markdown files using TOC JSON structure
+python batch_fix_sections.py
+
+# Use custom directories
+python batch_fix_sections.py --toc-dir ./toc_json_files --results-dir ./Results
+```
+
+This feature:
+- **Automatically matches** TOC JSON files with processed markdown files
+- **Corrects heading levels** (number of `#` characters) based on document hierarchy
+- **Preserves content** while fixing only the structural organization
+- **Processes files in-place** (no new files created)
+- **Provides detailed statistics** on processing success rates
+
+**Example transformation:**
+```markdown
+# Before (incorrect hierarchy)
+## Preface
+### Documentation and Training  
+## Introduction
+### Overview
+
+# After (corrected hierarchy)
+# Preface
+## Documentation and Training
+# Introduction  
+## Overview
+```
+
+### 5. Check Results
 
 After processing, check the `results` directory:
 
