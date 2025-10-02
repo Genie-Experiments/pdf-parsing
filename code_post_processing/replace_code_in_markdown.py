@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from utils.get_markdown_file_path import get_markdown_file_path
-from utils.search_code_in_markdown import search_code_in_markdown
+from code_post_processing.search_code_in_markdown import search_code_in_markdown
 
 
 def replace_code_in_markdown(original_code, cleaned_code, json_file_path):

@@ -78,11 +78,3 @@ def clean_and_format_code(raw_text: str) -> str:
 
     # --- 6. Fallback: raw text with dedent ---
     return f"```\n{textwrap.dedent(raw_text)}\n```"
-
-if __name__ == "__main__":
-    
-    example = "configure terminal\n\nvlan create 10 name DATA type port­mstprstp 0\n\nvlan create 20 name VOICE type port­mstprstp 0\n\nvlan create 30 name WIRELESS type port­mstprstp 0\n\nvlan i­sid 10 10\n\nvlan i­sid 20 20\n\nvlan i­sid 30 30\n\nvlan member add 10 1/1­1/4\n\nvlan member add 20 1/5­1/8\n\nvlan member add 30 1/9­1/11\n\nssh"
-
-
-    code = clean_and_format_code(example)
-    print(code)

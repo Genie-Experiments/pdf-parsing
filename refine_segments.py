@@ -1,15 +1,15 @@
 import json
-from convert_html_to_markdown import convert_html_to_markdown
-from utils.replace_html_with_markdown import replace_html_with_markdown
-from utils.clean_and_format_code import clean_and_format_code
-from utils.search_code_in_markdown import search_code_in_markdown
-from utils.replace_code_in_markdown import replace_code_in_markdown
-from utils.process_figure import (
+from tables_post_processing.convert_html_to_markdown import convert_html_to_markdown
+from tables_post_processing.replace_html_with_markdown import replace_html_with_markdown
+from code_post_processing.clean_and_format_code import clean_and_format_code
+from code_post_processing.search_code_in_markdown import search_code_in_markdown
+from code_post_processing.replace_code_in_markdown import replace_code_in_markdown
+from figures_post_processing.process_figure import (
     get_figure_info_and_context, 
     generate_figure_description, 
     search_and_replace_figure_in_markdown
 )
-from utils.process_code_with_llm import process_code_with_llm
+from code_post_processing.process_code_with_llm import process_code_with_llm
 
 def refine_segments(json_file_path, segments_to_extract:list, process_code_using_llm=False, process_figures_using_llm=False):
     # Load the recognition.json file

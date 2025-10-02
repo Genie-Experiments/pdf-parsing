@@ -5,9 +5,9 @@ from typing import Dict, List, Optional, Tuple, Union
 
 # Handle both relative and absolute imports
 try:
-    from .get_markdown_file_path import get_markdown_file_path
+    from utils.get_markdown_file_path import get_markdown_file_path
 except ImportError:
-    from get_markdown_file_path import get_markdown_file_path
+    from utils.get_markdown_file_path import get_markdown_file_path
 
 
 def normalize_text_variants(json_code_text: str) -> List[str]:
