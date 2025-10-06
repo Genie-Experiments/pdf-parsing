@@ -6,7 +6,22 @@ the PDF parsing pipeline application.
 """
 
 # Directory paths
-DATA_DIRECTORY = "./data"  # Directory containing PDFs
+DATA_DIRECTORY = "./Data"  # Primary directory containing PDFs (searches recursively at any depth)
+                          # Can be relative path (from project root) or absolute path
+                          # Examples: "./Data", "/path/to/pdfs", "C:/Users/PDFs"
+                          # 
+                          # RECURSIVE SEARCH: The system will find PDFs no matter how deep 
+                          # they are nested in subdirectories under this path.
+                          # Example structure:
+                          #   ./Data/
+                          #     ├── document1.pdf
+                          #     ├── category1/
+                          #     │   ├── document2.pdf
+                          #     │   └── subcategory/
+                          #     │       └── document3.pdf
+                          #     └── category2/
+                          #         └── document4.pdf
+                          # All PDFs above will be found regardless of their depth.
 OUTPUT_DIRECTORY = "./Results"  # Output directory (maintains same structure as input)
 DOLPHIN_SCRIPT = "./Dolphin/demo_page_hf.py" # Do not modify this line
 MODEL_PATH = "./Dolphin/hf_model" # Do not modify this line
