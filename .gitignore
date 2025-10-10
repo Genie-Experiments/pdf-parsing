@@ -14,3 +14,9 @@ venv/
 
 # Dolphin model files
 Dolphin/hf_model/*.safetensors
+
+# Data directory - contains PDF files that should not be tracked
+Data/
+
+# Results directory - contains generated output files
+Results/
