@@ -1,5 +1,5 @@
-from process_pdf_files import process_pdf_files
-from process_json_files import process_all_json_files
+from process_pdf_files.process_pdf_files import process_pdf_files
+from post_processing.process_json_files import process_all_json_files
 from post_processing.markdown_sections_post_processing.fix_markdown_sections import fix_markdown_headings, batch_fix_markdown_sections
 import config.config as config
 
