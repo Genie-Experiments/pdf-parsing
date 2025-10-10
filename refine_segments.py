@@ -1,18 +1,20 @@
 import json
-from tables_post_processing.convert_html_to_markdown import convert_html_to_markdown
-from tables_post_processing.replace_html_with_markdown import replace_html_with_markdown
-from code_post_processing.clean_and_format_code import clean_and_format_code
-from code_post_processing.search_code_in_markdown import search_code_in_markdown
-from code_post_processing.replace_code_in_markdown import replace_code_in_markdown
-from figures_post_processing.process_figure import (
+from post_processing.tables_post_processing.convert_html_to_markdown import convert_html_to_markdown
+from post_processing.tables_post_processing.replace_html_with_markdown import replace_html_with_markdown
+from post_processing.code_post_processing.clean_and_format_code import clean_and_format_code
+from post_processing.code_post_processing.search_code_in_markdown import search_code_in_markdown
+from post_processing.code_post_processing.replace_code_in_markdown import replace_code_in_markdown
+from post_processing.figures_post_processing.process_figure import (
     get_figure_info_and_context, 
     generate_figure_description, 
     search_and_replace_figure_in_markdown
 )
-from code_post_processing.process_code_with_llm import process_code_with_llm
+from post_processing.code_post_processing.process_code_with_llm import process_code_with_llm
 from config.config import DATA_DIRECTORY
 import os
 from pathlib import Path
+
+
 
 def get_context_for_code_element(json_data, code_element, page_data, context_window=2):
     """
