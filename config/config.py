@@ -7,7 +7,7 @@ the PDF parsing pipeline application.
 
 # Directory paths
 DATA_DIRECTORY = "./Data"  # Primary directory containing PDFs (searches recursively at any depth)         
-OUTPUT_DIRECTORY = "./Results"  # Output directory (maintains same structure as input)
+OUTPUT_DIRECTORY = "./temp_results"  # Output directory (maintains same structure as input)
 
 DOLPHIN_SCRIPT = "./Dolphin/demo_page_hf.py" # Do not modify this line
 MODEL_PATH = "./Dolphin/hf_model" # Do not modify this line

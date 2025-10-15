@@ -15,7 +15,7 @@ SEGMENTS_TO_REFINE = config.SEGMENTS_TO_REFINE
 
 if __name__ == "__main__":
     # 1. Process PDF Files recursively from a directory
-    process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
+    #process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
 
     # 2. Process all JSON files in results directory
     process_all_json_files(OUTPUT_DIRECTORY, SEGMENTS_TO_REFINE, PROCESS_CODE_USING_LLM, PROCESS_FIGURES_USING_LLM)

@@ -1,7 +1,7 @@
 import os
 import glob
 from pathlib import Path
-from refine_segments import refine_segments
+from post_processing.refine_segments import refine_segments
 
 def process_all_json_files(results_directory, segments_to_extract, process_code_using_llm=False, process_figures_using_llm=False):
     """

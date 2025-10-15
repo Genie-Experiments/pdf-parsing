@@ -1,9 +1,10 @@
 import json
 from post_processing.tables_post_processing.convert_html_to_markdown import convert_html_to_markdown
 from post_processing.tables_post_processing.replace_html_with_markdown import replace_html_with_markdown
+from post_processing.code_post_processing.main import find_code_blocks
 from post_processing.code_post_processing.clean_and_format_code import clean_and_format_code
-from post_processing.code_post_processing.search_code_in_markdown import search_code_in_markdown
-from post_processing.code_post_processing.replace_code_in_markdown import replace_code_in_markdown
+from post_processing.code_post_processing.pdf_code_search import search_code_in_pdf
+from post_processing.code_post_processing.markdown_code_replacer import replace_cleaned_with_original_code, find_code_in_markdown
 from post_processing.figures_post_processing.process_figure import (
     get_figure_info_and_context, 
     generate_figure_description, 
@@ -13,8 +14,6 @@ from post_processing.code_post_processing.process_code_with_llm import process_c
 from config.config import DATA_DIRECTORY
 import os
 from pathlib import Path
-
-
 
 def get_context_for_code_element(json_data, code_element, page_data, context_window=2):
     """
@@ -284,68 +283,102 @@ def refine_segments(json_file_path, segments_to_extract:list, process_code_using
                     else:
                         print("  Failed to convert HTML to markdown")
                 
-                # Special handling for code elements
+                # Special handling for code elements - Using comprehensive replacement approach
                 elif label == "code":
                     print(f"  Raw Code Content :\n{text}")
                     
-                    # Determine which processing method to use
-                    processed_code = None
-                    processing_method = "traditional"
+                    # Check if we need to process this document's code blocks
+                    print(f"\n  🔄 Processing code blocks for entire document using comprehensive approach...")
                     
-                    # Try LLM processing if enabled
-                    if process_code_using_llm:
-                        print(f"\n  Processing code with LLM vision (high quality mode)...")
+                    # Get PDF file path
+                    pdf_file_path = get_pdf_file_path(json_file_path)
+                    
+                    if not pdf_file_path:
+                        print(f"  ⚠ Could not find corresponding PDF file - cannot perform full code replacement")
+                        print(f"  Individual code cleaning will be attempted instead...")
+                        
+                        # Fallback: Just clean this individual code block
                         try:
-                            processed_code = process_code_with_llm(element, json_file_path)
-                            if processed_code:
-                                processing_method = "LLM"
-                                print(f"  ✓ Successfully processed code with LLM!")
-                                print(f"\n  LLM-Processed Code:")
+                            cleaned_code = clean_and_format_code(text)
+                            if cleaned_code:
+                                print(f"  ✓ Code cleaned successfully")
+                                print(f"  Cleaned Code:")
                                 print(f"  {'-' * 40}")
-                                print(processed_code)
+                                print(cleaned_code)
                                 print(f"  {'-' * 40}")
                             else:
-                                print(f"  ✗ LLM processing failed, falling back to traditional processing...")
+                                print(f"  ✗ Failed to clean code")
                         except Exception as e:
-                            print(f"  ✗ LLM processing error: {str(e)}")
-                            print(f"  Falling back to traditional processing...")
-                    
-                    # Use traditional text-based processing if LLM failed or disabled
-                    if not processed_code:
-                        print(f"\n  {'Using traditional text-based code processing...' if not process_code_using_llm else 'Falling back to traditional processing...'}")
-                        processed_code = clean_and_format_code(text)
-                        processing_method = "traditional"
-                        
-                        if processed_code:
-                            print(f"\n  Cleaned and Formatted Code:")
-                            print(f"  {'-' * 40}")
-                            print(processed_code)
-                            print(f"  {'-' * 40}")
-                        else:
-                            print("  ✗ Failed to clean and format code")
-                    
-                    # Replace code in markdown if we have processed code
-                    if processed_code:
-                        # Search for the raw code in the markdown file
-                        print(f"\n  Searching for raw code in markdown file...")
-                        search_result = search_code_in_markdown(text, json_file_path)
-                        
-                        if search_result and search_result['found']:
-                            print(f"  ✓ Found code at line {search_result['line_number']} ({search_result['match_type']} match)")
-                            
-                            # Replace the raw code with processed code in markdown
-                            method_label = "LLM-processed" if processing_method == "LLM" else "cleaned"
-                            print(f"\n  Replacing raw code with {method_label} code...")
-                            success = replace_code_in_markdown(text, processed_code, json_file_path)
-                            
-                            if success:
-                                print(f"  ✓ Raw code successfully replaced with {method_label} code!")
-                            else:
-                                print(f"  ✗ Failed to replace raw code with {method_label} code")
-                        else:
-                            print(f"  ✗ Raw code not found in markdown file - cannot replace")
+                            print(f"  ✗ Error cleaning code: {str(e)}")
                     else:
-                        print("  ✗ Failed to clean and format code")
+                        print(f"  ✓ Found PDF file: {pdf_file_path}")
+                        
+                        # Get markdown file path
+                        from utils.get_markdown_file_path import get_markdown_file_path
+                        markdown_file_path = get_markdown_file_path(json_file_path)
+                        
+                        if not markdown_file_path or not markdown_file_path.exists():
+                            print(f"  ✗ Could not find markdown file for replacement")
+                        else:
+                            print(f"  ✓ Found markdown file: {markdown_file_path}")
+                            
+                            # Use the comprehensive replacement function from the test files
+                            try:
+                                print(f"\n  🚀 Starting comprehensive code replacement process...")
+                                print(f"  This will process all code blocks in the document")
+                                
+                                # Call the comprehensive replacement function
+                                results = replace_cleaned_with_original_code(
+                                    str(markdown_file_path),
+                                    pdf_file_path, 
+                                    json_file_path
+                                )
+                                
+                                # Display results
+                                print(f"\n  📊 REPLACEMENT RESULTS:")
+                                print(f"  Total code blocks: {results.get('total_code_blocks', 0)}")
+                                print(f"  Successful replacements: {results.get('successful_replacements', 0)}")
+                                print(f"  Failed replacements: {results.get('failed_replacements', 0)}")
+                                
+                                if results.get('total_code_blocks', 0) > 0:
+                                    success_rate = (results.get('successful_replacements', 0) / results.get('total_code_blocks', 1)) * 100
+                                    print(f"  Success rate: {success_rate:.1f}%")
+                                
+                                if 'error' in results:
+                                    print(f"  ⚠ Error occurred: {results['error']}")
+                                else:
+                                    print(f"  ✅ Comprehensive replacement completed successfully!")
+                                    
+                                    # Show some replacement details if available
+                                    if 'replacement_details' in results and results['replacement_details']:
+                                        print(f"\n  📝 Sample replacement details:")
+                                        for detail in results['replacement_details'][:3]:  # Show first 3
+                                            status = "✅" if detail.get('success', False) else "❌"
+                                            print(f"    {status} Block {detail.get('block_number', '?')}: {detail.get('reason', 'N/A')}")
+                                
+                                # Since we processed all code blocks, we can break out of the element loop
+                                # to avoid processing individual code blocks again
+                                print(f"\n  ℹ️ All code blocks processed comprehensively - skipping individual processing")
+                                return  # Exit the function since all code is processed
+                                
+                            except Exception as e:
+                                print(f"  ✗ Error during comprehensive replacement: {str(e)}")
+                                print(f"  Falling back to individual code block processing...")
+                                
+                                # Fallback: Process this individual code block
+                                try:
+                                    # Step 1-2: Clean the code
+                                    cleaned_code = clean_and_format_code(text)
+                                    if cleaned_code:
+                                        print(f"  ✓ Individual code block cleaned")
+                                        print(f"  Cleaned Code:")
+                                        print(f"  {'-' * 40}")
+                                        print(cleaned_code)
+                                        print(f"  {'-' * 40}")
+                                    else:
+                                        print(f"  ✗ Failed to clean individual code block")
+                                except Exception as clean_error:
+                                    print(f"  ✗ Error cleaning individual code: {str(clean_error)}")
                 
                 # Special handling for figure elements
                 elif label == "fig" and process_figures_using_llm:
