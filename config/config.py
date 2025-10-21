@@ -7,18 +7,19 @@ the PDF parsing pipeline application.
 
 # Directory paths
 DATA_DIRECTORY = "./Data"  # Primary directory containing PDFs (searches recursively at any depth)         
-OUTPUT_DIRECTORY = "./temp_results"  # Output directory (maintains same structure as input)
+OUTPUT_DIRECTORY = "./temp_result"  # Output directory (maintains same structure as input)
 
 DOLPHIN_SCRIPT = "./Dolphin/demo_page_hf.py" # Do not modify this line
 MODEL_PATH = "./Dolphin/hf_model" # Do not modify this line
-TOC_JSON_DIRECTORY = "./toc_json_files"  # Directory containing TOC JSON files with section hierarchy
+HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory containing TOC JSON files with section hierarchy
+HTML_TO_MARKDOWN_DIR = "./post_processing/html-to-markdown"  # Directory containing html-to-markdown binaries
 
 # Processing configuration flags
 PROCESS_CODE_USING_LLM = False  # Set to True to process code segments with LLM (GPT-4o Vision API)
 PROCESS_FIGURES_USING_LLM = False  # Set to True to process figure segments with LLM (GPT-4o Vision API)
 
 # Segment processing configuration
-SEGMENTS_TO_REFINE = ["tab", "code", "fig"]  # Supported: "tab" (tables), "code" (code blocks), "fig" (figures)
+SEGMENTS_TO_REFINE = ["tab"]  # Supported: "tab" (tables), "code" (code blocks), "fig" (figures)
 
 # Additional configuration options (can be extended as needed)
 # API Configuration

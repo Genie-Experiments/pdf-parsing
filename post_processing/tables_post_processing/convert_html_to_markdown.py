@@ -2,7 +2,10 @@ import subprocess
 import os
 import platform
 import stat
+import sys
 from pathlib import Path
+
+from config.config import HTML_TO_MARKDOWN_DIR
 
 
 class HTMLToMarkdownConverter:
@@ -23,21 +26,20 @@ class HTMLToMarkdownConverter:
             return False
     
     def _find_html_to_markdown_dir(self):
-        """Find the html-to-markdown directory in various possible locations"""
-        possible_locations = [
-            Path('./html-to-markdown'),
-            Path('../html-to-markdown'),
-            Path.cwd() / 'html-to-markdown',
-            Path('/content/pdf-parsing-pipeline/html-to-markdown'),
-            Path('/content/html-to-markdown'),
-        ]
+        """Find the html-to-markdown directory using config"""
+        # Use config path first
+        config_dir = Path(HTML_TO_MARKDOWN_DIR)
         
-        for location in possible_locations:
-            if location.exists() and location.is_dir():
-                return location
+        # Handle both relative and absolute paths
+        if not config_dir.is_absolute():
+            # If relative, resolve from current working directory
+            config_dir = Path.cwd() / config_dir.as_posix().lstrip('./')
         
-        # Fallback to default
-        return Path('./html-to-markdown')
+        if config_dir.exists() and config_dir.is_dir():
+            return config_dir
+        
+        # If config path doesn't exist, return it anyway so error is clear
+        return config_dir
     
     def _get_executable_path(self):
         """Get the correct pre-compiled binary path based on the operating system"""

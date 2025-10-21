@@ -1,6 +1,7 @@
 from process_pdf_files.process_pdf_files import process_pdf_files
 from post_processing.process_json_files import process_all_json_files
 from post_processing.markdown_sections_post_processing.fix_markdown_sections import fix_markdown_headings, batch_fix_markdown_sections
+from post_processing.markdown_sections_post_processing.section_hierarchy_from_pdf import batch_process_pdfs
 import config.config as config
 
 # Import configuration settings
@@ -8,17 +9,36 @@ DATA_DIRECTORY = config.DATA_DIRECTORY
 OUTPUT_DIRECTORY = config.OUTPUT_DIRECTORY
 DOLPHIN_SCRIPT = config.DOLPHIN_SCRIPT
 MODEL_PATH = config.MODEL_PATH
-TOC_JSON_DIRECTORY = config.TOC_JSON_DIRECTORY
+HIERARCHY_JSON_DIRECTORY = config.HIERARCHY_JSON_DIRECTORY
 PROCESS_CODE_USING_LLM = config.PROCESS_CODE_USING_LLM
 PROCESS_FIGURES_USING_LLM = config.PROCESS_FIGURES_USING_LLM
 SEGMENTS_TO_REFINE = config.SEGMENTS_TO_REFINE
 
 if __name__ == "__main__":
     # 1. Process PDF Files recursively from a directory
-    #process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
+    process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
 
-    # 2. Process all JSON files in results directory
+    # 2. Generate section hierarchy JSONs from PDFs
+    print("\n" + "="*60)
+    print("STEP 2: Generating section hierarchy JSONs from PDFs")
+    print("="*60)
+    batch_process_pdfs(
+        data_directory=DATA_DIRECTORY,
+        output_base_dir=HIERARCHY_JSON_DIRECTORY,
+        min_heading_size=12, # or set to None to auto-detect
+        max_levels=6,
+        bold_only=False,
+        exclude_headers_footers=True
+    )
+
+    # 3. Process all JSON files in results directory
+    print("\n" + "="*60)
+    print("STEP 3: Processing JSON files for segment refinement")
+    print("="*60)
     process_all_json_files(OUTPUT_DIRECTORY, SEGMENTS_TO_REFINE, PROCESS_CODE_USING_LLM, PROCESS_FIGURES_USING_LLM)
 
-    # 3. Batch fix markdown section hierarchy using TOC JSON files
-    batch_fix_markdown_sections(TOC_JSON_DIRECTORY, OUTPUT_DIRECTORY)
+    # 4. Batch fix markdown section hierarchy using hierarchy JSON files
+    print("\n" + "="*60)
+    print("STEP 4: Fixing markdown section hierarchy")
+    print("="*60)
+    batch_fix_markdown_sections(HIERARCHY_JSON_DIRECTORY, OUTPUT_DIRECTORY)

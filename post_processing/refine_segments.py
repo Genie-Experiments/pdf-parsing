@@ -85,7 +85,7 @@ def get_context_for_code_element(json_data, code_element, page_data, context_win
 
 def list_all_pdfs_in_config_directories(project_root_path=None):
     """
-    List all PDF files found in the configured directories for debugging purposes.
+    List all PDF files found in the configured directory.
     
     Args:
         project_root_path: Optional project root path. If not provided, uses current working directory.
@@ -98,44 +98,30 @@ def list_all_pdfs_in_config_directories(project_root_path=None):
     else:
         project_root_path = Path(project_root_path)
     
-    directories_to_search = [DATA_DIRECTORY]
     pdf_inventory = {}
     
-    print(f"📋 PDF Inventory for configured directories:")
-    print(f"   Project root: {project_root_path}")
+    # Handle both relative and absolute paths
+    if not os.path.isabs(DATA_DIRECTORY):
+        search_path = project_root_path / DATA_DIRECTORY.lstrip('./')
+    else:
+        search_path = Path(DATA_DIRECTORY)
     
-    for directory in directories_to_search:
-        # Handle both relative and absolute paths
-        if not os.path.isabs(directory):
-            search_path = project_root_path / directory.lstrip('./')
-        else:
-            search_path = Path(directory)
-        
-        pdf_files = []
-        if search_path.exists():
-            pdf_files = [str(pdf) for pdf in search_path.rglob("*.pdf")]
-            pdf_files.sort()
-        
-        pdf_inventory[str(search_path)] = pdf_files
-        
-        print(f"\n📁 {directory} -> {search_path}")
-        if search_path.exists():
-            print(f"   Status: ✅ Directory exists")
-            print(f"   PDFs found: {len(pdf_files)}")
-            if pdf_files:
-                for pdf in pdf_files[:5]:  # Show first 5 PDFs
-                    print(f"     • {Path(pdf).name}")
-                if len(pdf_files) > 5:
-                    print(f"     ... and {len(pdf_files) - 5} more")
-        else:
-            print(f"   Status: ❌ Directory not found")
+    pdf_files = []
+    if search_path.exists():
+        pdf_files = [str(pdf) for pdf in search_path.rglob("*.pdf")]
+        pdf_files.sort()
+    
+    pdf_inventory[str(search_path)] = pdf_files
+    
+    print(f"� PDF Inventory:")
+    print(f"   Directory: {DATA_DIRECTORY} -> {search_path}")
+    print(f"   PDFs found: {len(pdf_files)}")
     
     return pdf_inventory
 
 def get_pdf_file_path(json_file_path):
     """
-    Find the corresponding PDF file using recursive search in the configured PDF directories.
-    Searches the primary DATA_DIRECTORY first, then additional directories if configured.
+    Find the corresponding PDF file in the configured data directory.
     
     Args:
         json_file_path: Path to the JSON file
@@ -143,98 +129,32 @@ def get_pdf_file_path(json_file_path):
     Returns:
         Path to the corresponding PDF file or None if not found
     """
-    def search_directory(directory_path, document_name, project_root=None):
-        """Helper function to search for PDF in a specific directory."""
-        # Handle both relative and absolute paths
-        if not os.path.isabs(directory_path) and project_root:
-            pdf_directory = project_root / directory_path.lstrip('./')
-        else:
-            pdf_directory = Path(directory_path)
-        
-        if not pdf_directory.exists():
-            print(f"    ⚠ Directory does not exist: {pdf_directory}")
-            return []
-        
-        print(f"    🔍 Searching in: {pdf_directory}")
-        possible_paths = []
-        
-        # Recursive search for exact filename matches (highest priority)
-        for pdf_file in pdf_directory.rglob(f"{document_name}.pdf"):
-            possible_paths.append((str(pdf_file), "exact_match"))
-            print(f"      [+] Found exact match: {pdf_file}")
-        
-        # If no exact matches, search with fuzzy matching
-        if not possible_paths:
-            for pdf_file in pdf_directory.rglob("*.pdf"):
-                pdf_name = pdf_file.stem.lower()
-                doc_name = document_name.lower()
-                
-                # Normalize names for comparison (handle underscores, spaces, etc.)
-                pdf_normalized = pdf_name.replace('_', ' ').replace('-', ' ')
-                doc_normalized = doc_name.replace('_', ' ').replace('-', ' ')
-                
-                match_type = None
-                # Check different matching criteria in order of preference
-                if pdf_normalized == doc_normalized:
-                    match_type = "normalized_exact"
-                elif pdf_name == doc_name:
-                    match_type = "case_insensitive"
-                elif doc_name in pdf_name or pdf_name in doc_name:
-                    match_type = "partial_match"
-                elif any(word in pdf_name for word in doc_name.split('_') if len(word) > 3):
-                    match_type = "keyword_match"
-                
-                if match_type:
-                    possible_paths.append((str(pdf_file), match_type))
-                    print(f"      [+] Found {match_type}: {pdf_file}")
-        
-        return possible_paths
-
     try:
         json_path = Path(json_file_path)
         document_name = json_path.stem
         
-        # Determine project root for relative path resolution
-        path_parts = json_path.parts
-        if 'Essentials' in path_parts:
-            # Structure: project_root/Results/Essentials/document_name/recognition_json/document_name.json
-            project_root = json_path.parent.parent.parent.parent.parent
+        # Resolve data directory path
+        if os.path.isabs(DATA_DIRECTORY):
+            data_dir = Path(DATA_DIRECTORY)
         else:
-            # Structure: project_root/Results/document_name/recognition_json/document_name.json  
-            project_root = json_path.parent.parent.parent.parent
+            data_dir = Path.cwd() / DATA_DIRECTORY.lstrip('./')
         
-        print(f"  [SEARCH] Searching for PDF: {document_name}.pdf")
-        print(f"  [PRIMARY] Searching in primary directory:")
-        
-        # Search in the primary directory
-        all_possible_paths = search_directory(DATA_DIRECTORY, document_name, project_root)
-        
-        # Sort by match quality (exact matches first)
-        match_priority = {
-            "exact_match": 1,
-            "normalized_exact": 2, 
-            "case_insensitive": 3,
-            "partial_match": 4,
-            "keyword_match": 5
-        }
-        
-        all_possible_paths.sort(key=lambda x: match_priority.get(x[1], 999))
-        
-        if all_possible_paths:
-            best_match = all_possible_paths[0]
-            print(f"  [SUCCESS] Best match selected ({best_match[1]}): {best_match[0]}")
-            
-            if len(all_possible_paths) > 1:
-                print(f"  [INFO] Found {len(all_possible_paths)} total matches in directory")
-            
-            return best_match[0]
-        else:
-            print(f"  [X] No matching PDF files found in configured directory")
-            print(f"    Searched directory: {DATA_DIRECTORY}")
+        if not data_dir.exists():
+            print(f"  ✗ Data directory not found: {data_dir}")
             return None
         
+        print(f"  Searching for PDF: {document_name}.pdf")
+        
+        # Search for exact match first
+        for pdf_file in data_dir.rglob(f"{document_name}.pdf"):
+            print(f"  ✓ PDF found: {pdf_file}")
+            return str(pdf_file)
+        
+        print(f"  ✗ PDF not found in: {data_dir}")
+        return None
+        
     except Exception as e:
-        print(f"  [ERROR] Error finding PDF file: {str(e)}")
+        print(f"  ✗ Error finding PDF file: {str(e)}")
         return None
 
 def refine_segments(json_file_path, segments_to_extract:list, process_code_using_llm=False, process_figures_using_llm=False):

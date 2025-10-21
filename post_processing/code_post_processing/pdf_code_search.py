@@ -457,36 +457,3 @@ def find_all_code_matches(pdf_path: str, json_file_path: str,
     except Exception as e:
         print(f"Error finding code matches: {e}")
         return {}
-
-
-# Example usage
-if __name__ == "__main__":
-    # Test the PDF search functionality - PyMuPDF is required
-    pdf_path = "MigrateERSToUniversalVOSS_RG.pdf"
-    json_path = r"MigrateERSToUniversalVOSS_RG\recognition_json\MigrateERSToUniversalVOSS_RG.json"
-    
-    print("🔍 Searching for all code matches in PDF...")
-    print("=" * 60)
-    
-    try:
-        all_matches = find_all_code_matches(pdf_path, json_path, min_confidence=0.3)
-        
-        for block_id, matches in all_matches.items():
-            print(f"\n📋 {block_id.upper()}:")
-            for i, match in enumerate(matches[:3], 1):  # Show top 3 matches
-                print(f"  Match {i}: Confidence {match.confidence_score:.2f}")
-                print(f"    Page: {match.page_number}")
-                print(f"    Context: {match.context_text[:100]}...")
-                print(f"    PDF Text: {match.pdf_text[:100]}...")
-                print("-" * 40)
-                
-    except ImportError as e:
-        print("❌ PyMuPDF is required for this functionality.")
-        print("   Install it with: pip install PyMuPDF")
-        raise e
-    except FileNotFoundError as e:
-        print(f"❌ File not found: {e}")
-        print("   Make sure the PDF and JSON files exist in the correct location.")
-    except Exception as e:
-        print(f"❌ Error during PDF search: {e}")
-        raise e

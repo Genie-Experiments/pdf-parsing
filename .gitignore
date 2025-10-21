@@ -19,8 +19,8 @@ Dolphin/hf_model/*.safetensors
 Data/
 
 # Results directory - contains generated output files
-Results/
+Results
 
 Processed-Images-By-Dolphin/
 
-temp_results/
+temp_result/

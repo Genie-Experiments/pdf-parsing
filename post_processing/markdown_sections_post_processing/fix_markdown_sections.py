@@ -265,15 +265,15 @@ def batch_fix_markdown_sections(toc_json_dir: str, results_dir: str):
     print(f"Results directory: {results_dir}")
     print(f"{'='*80}")
     
-    # Find all TOC JSON files
+    # Find all JSON files (hierarchy files)
     toc_json_path = Path(toc_json_dir)
-    json_files = list(toc_json_path.rglob("*.toc.json"))
+    json_files = list(toc_json_path.rglob("*.json"))
     
     if not json_files:
-        print(f"No TOC JSON files found in {toc_json_dir}")
+        print(f"No JSON files found in {toc_json_dir}")
         return
     
-    print(f"Found {len(json_files)} TOC JSON files")
+    print(f"Found {len(json_files)} JSON hierarchy files")
     
     # Statistics
     total_processed = 0
@@ -283,8 +283,8 @@ def batch_fix_markdown_sections(toc_json_dir: str, results_dir: str):
     # Process each TOC JSON file
     for json_file in json_files:
         try:
-            # Extract the base filename (without .toc.json extension)
-            base_filename = json_file.stem.replace('.toc', '')
+            # Extract the base filename (without .json extension)
+            base_filename = json_file.stem
             
             print(f"\n{'-'*60}")
             print(f"Processing: {json_file.name}")
@@ -331,7 +331,7 @@ def batch_fix_markdown_sections(toc_json_dir: str, results_dir: str):
     print(f"\n{'='*80}")
     print(f"BATCH PROCESSING COMPLETED")
     print(f"{'='*80}")
-    print(f"Total TOC JSON files found: {len(json_files)}")
+    print(f"Total JSON hierarchy files found: {len(json_files)}")
     print(f"Matching markdown files found: {total_matched}")
     print(f"Successfully processed: {total_processed}")
     print(f"Errors encountered: {total_errors}")
