@@ -14,6 +14,8 @@ MODEL_PATH = "./Dolphin/hf_model" # Do not modify this line
 HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory containing TOC JSON files with section hierarchy
 HTML_TO_MARKDOWN_DIR = "./post_processing/html-to-markdown"  # Directory containing html-to-markdown binaries
 
+RAW_PDF_TEXT_DIR = "./pdfs_raw_text"  # Directory to store raw extracted PDF texts
+
 # Processing configuration flags
 PROCESS_CODE_USING_LLM = False  # Set to True to process code segments with LLM (GPT-4o Vision API)
 PROCESS_FIGURES_USING_LLM = False  # Set to True to process figure segments with LLM (GPT-4o Vision API)

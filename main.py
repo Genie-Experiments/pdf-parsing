@@ -2,6 +2,8 @@ from process_pdf_files.process_pdf_files import process_pdf_files
 from post_processing.process_json_files import process_all_json_files
 from post_processing.markdown_sections_post_processing.fix_markdown_sections import fix_markdown_headings, batch_fix_markdown_sections
 from post_processing.markdown_sections_post_processing.section_hierarchy_from_pdf import batch_process_pdfs
+from post_processing.fix_ocr_errors.get_text_from_pdf import extract_all_pdf_texts
+from post_processing.fix_ocr_errors.fix_ocr_errors import fix_ocr_errors_batch
 import config.config as config
 
 # Import configuration settings
@@ -13,14 +15,24 @@ HIERARCHY_JSON_DIRECTORY = config.HIERARCHY_JSON_DIRECTORY
 PROCESS_CODE_USING_LLM = config.PROCESS_CODE_USING_LLM
 PROCESS_FIGURES_USING_LLM = config.PROCESS_FIGURES_USING_LLM
 SEGMENTS_TO_REFINE = config.SEGMENTS_TO_REFINE
+RAW_PDF_TEXT_DIR = config.RAW_PDF_TEXT_DIR
 
 if __name__ == "__main__":
-    # 1. Process PDF Files recursively from a directory
+    # 1. Extract raw text from all PDF files
+    print("="*60)
+    print("STEP 1: Extracting raw text from PDF files")
+    print("="*60)
+    extract_all_pdf_texts(DATA_DIRECTORY, RAW_PDF_TEXT_DIR)
+    
+    # 2. Process PDF Files recursively from a directory
+    print("\n" + "="*60)
+    print("STEP 2: Processing PDF files with Dolphin model")
+    print("="*60)
     process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
 
-    # 2. Generate section hierarchy JSONs from PDFs
+    # 3. Generate section hierarchy JSONs from PDFs
     print("\n" + "="*60)
-    print("STEP 2: Generating section hierarchy JSONs from PDFs")
+    print("STEP 3: Generating section hierarchy JSONs from PDFs")
     print("="*60)
     batch_process_pdfs(
         data_directory=DATA_DIRECTORY,
@@ -31,14 +43,25 @@ if __name__ == "__main__":
         exclude_headers_footers=True
     )
 
-    # 3. Process all JSON files in results directory
+    # 4. Process all JSON files in results directory
     print("\n" + "="*60)
-    print("STEP 3: Processing JSON files for segment refinement")
+    print("STEP 4: Processing JSON files for segment refinement")
     print("="*60)
     process_all_json_files(OUTPUT_DIRECTORY, SEGMENTS_TO_REFINE, PROCESS_CODE_USING_LLM, PROCESS_FIGURES_USING_LLM)
 
-    # 4. Batch fix markdown section hierarchy using hierarchy JSON files
+    # 5. Batch fix markdown section hierarchy using hierarchy JSON files
     print("\n" + "="*60)
-    print("STEP 4: Fixing markdown section hierarchy")
+    print("STEP 5: Fixing markdown section hierarchy")
     print("="*60)
     batch_fix_markdown_sections(HIERARCHY_JSON_DIRECTORY, OUTPUT_DIRECTORY)
+
+    # 6. Fix OCR errors in the markdown files
+    print("\n" + "="*60)
+    print("STEP 6: Fixing OCR errors in markdown files")
+    print("="*60)
+    fix_ocr_errors_batch(OUTPUT_DIRECTORY, RAW_PDF_TEXT_DIR)
+
+    # 7. Remove page headers and footers from markdown files
+    print("\n" + "="*60)
+    print("STEP 7: Removing page headers and footers from markdown files")
+    print("="*60)
