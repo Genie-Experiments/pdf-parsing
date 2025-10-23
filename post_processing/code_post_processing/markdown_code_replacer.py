@@ -334,8 +334,7 @@ def find_code_in_markdown(markdown_content: str, cleaned_code: str,
     return context_text, start_line, end_line
 
 
-def replace_cleaned_with_original_code(markdown_path: str, pdf_path: str, json_file_path: str,
-                                     backup_suffix: str = "_backup") -> Dict[str, Any]:
+def replace_cleaned_with_original_code(markdown_path: str, pdf_path: str, json_file_path: str) -> Dict[str, Any]:
     """
     Replace cleaned code in markdown with original PDF code.
     
@@ -343,7 +342,6 @@ def replace_cleaned_with_original_code(markdown_path: str, pdf_path: str, json_f
         markdown_path: Path to the markdown file
         pdf_path: Path to the PDF file
         json_file_path: Path to the JSON file with extracted elements
-        backup_suffix: Suffix for backup file
         
     Returns:
         Dictionary with replacement results and statistics
@@ -356,15 +354,9 @@ def replace_cleaned_with_original_code(markdown_path: str, pdf_path: str, json_f
     }
     
     try:
-        # Create backup
-        backup_path = markdown_path + backup_suffix + ".md"
+        # Read the original content
         with open(markdown_path, 'r', encoding='utf-8') as f:
             original_content = f.read()
-        
-        with open(backup_path, 'w', encoding='utf-8') as f:
-            f.write(original_content)
-        
-        print(f"✅ Backup created: {backup_path}")
         
         # Get all code blocks from JSON
         code_blocks = find_code_blocks(json_file_path)
@@ -586,34 +578,9 @@ def replace_cleaned_with_original_code(markdown_path: str, pdf_path: str, json_f
         print(f"   Total code blocks: {results['total_code_blocks']}")
         print(f"   Successful: {results['successful_replacements']}")
         print(f"   Failed: {results['failed_replacements']}")
-        print(f"   Backup saved: {backup_path}")
         
     except Exception as e:
         print(f"❌ Error during replacement: {e}")
         results['error'] = str(e)
     
     return results
-
-
-# Example usage and test
-if __name__ == "__main__":
-    markdown_path = r"MigrateERSToUniversalVOSS_RG\markdown\MigrateERSToUniversalVOSS_RG.md"
-    pdf_path = "MigrateERSToUniversalVOSS_RG.pdf"
-    json_path = r"MigrateERSToUniversalVOSS_RG\recognition_json\MigrateERSToUniversalVOSS_RG.json"
-    
-    print("🔄 Starting markdown code replacement process...")
-    print("=" * 70)
-    
-    results = replace_cleaned_with_original_code(markdown_path, pdf_path, json_path)
-    
-    print("\n📊 FINAL RESULTS:")
-    print("=" * 50)
-    for key, value in results.items():
-        if key != 'replacement_details':
-            print(f"{key}: {value}")
-    
-    if 'replacement_details' in results and results['replacement_details']:
-        print(f"\n📝 Replacement Details:")
-        for detail in results['replacement_details'][:5]:  # Show first 5
-            print(f"  Block {detail['block_number']} (Page {detail['page']}): "
-                  f"PDF={detail['pdf_length']} chars, Original={detail['original_length']} chars")

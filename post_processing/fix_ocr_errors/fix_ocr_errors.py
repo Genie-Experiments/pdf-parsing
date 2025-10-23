@@ -504,9 +504,8 @@ def fix_ocr_errors_batch(results_directory: str, raw_pdf_text_directory: str, mi
             # Initialize OCR fixer and process
             fixer = OCRErrorFixer(json_path, text_path, markdown_path)
             
-            # Generate output path for corrected markdown (in the same directory as original markdown)
-            markdown_dir = os.path.dirname(markdown_path)
-            output_path = os.path.join(markdown_dir, base_name + '_corrected.md')
+            # Use the original markdown path to modify in place
+            output_path = markdown_path
             
             # Fix OCR errors
             corrected_md, replacements = fixer.fix_markdown(output_path, min_similarity)

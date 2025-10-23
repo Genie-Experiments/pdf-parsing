@@ -6,6 +6,7 @@ from post_processing.fix_ocr_errors.get_text_from_pdf import extract_all_pdf_tex
 from post_processing.fix_ocr_errors.fix_ocr_errors import fix_ocr_errors_batch
 from post_processing.remove_headers_and_footers.insert_page_breaks import insert_page_breaks_batch
 from post_processing.remove_headers_and_footers.remove_headers_footers import remove_headers_footers_batch
+from utils.create_backups_md import create_markdown_backup
 import config.config as config
 
 # Import configuration settings
@@ -45,32 +46,42 @@ if __name__ == "__main__":
         exclude_headers_footers=True
     )
 
-    # 4. Process all JSON files in results directory
+    # 4. Create backup of markdown files before post-processing
     print("\n" + "="*60)
-    print("STEP 4: Processing JSON files for segment refinement")
+    print("STEP 4: Creating backup of markdown files before post-processing")
+    print("="*60)
+    backup_count = create_markdown_backup(OUTPUT_DIRECTORY)
+    if backup_count:
+        print(f"Successfully created {backup_count} backup files with '_backup' suffix")
+    else:
+        print("No markdown files found to backup, continuing with post-processing...")
+
+    # 5. Process all JSON files in results directory
+    print("\n" + "="*60)
+    print("STEP 5: Processing JSON files for segment refinement")
     print("="*60)
     process_all_json_files(OUTPUT_DIRECTORY, SEGMENTS_TO_REFINE, PROCESS_CODE_USING_LLM, PROCESS_FIGURES_USING_LLM)
 
-    # 5. Batch fix markdown section hierarchy using hierarchy JSON files
+    # 6. Batch fix markdown section hierarchy using hierarchy JSON files
     print("\n" + "="*60)
-    print("STEP 5: Fixing markdown section hierarchy")
+    print("STEP 6: Fixing markdown section hierarchy")
     print("="*60)
     batch_fix_markdown_sections(HIERARCHY_JSON_DIRECTORY, OUTPUT_DIRECTORY)
 
-    # 6. Fix OCR errors in the markdown files
+    # 7. Fix OCR errors in the markdown files
     print("\n" + "="*60)
-    print("STEP 6: Fixing OCR errors in markdown files")
+    print("STEP 7: Fixing OCR errors in markdown files")
     print("="*60)
     fix_ocr_errors_batch(OUTPUT_DIRECTORY, RAW_PDF_TEXT_DIR)
 
-    # 7. Insert page breaks in markdown files
+    # 8. Insert page breaks in markdown files
     print("\n" + "="*60)
-    print("STEP 7: Inserting page breaks in markdown files")
+    print("STEP 8: Inserting page breaks in markdown files")
     print("="*60)
     insert_page_breaks_batch(OUTPUT_DIRECTORY)
 
-    # 8. Remove headers and footers from markdown files
+    # 9. Remove headers and footers from markdown files
     print("\n" + "="*60)
-    print("STEP 8: Removing headers and footers from markdown files")
+    print("STEP 9: Removing headers and footers from markdown files")
     print("="*60)
     remove_headers_footers_batch(OUTPUT_DIRECTORY)

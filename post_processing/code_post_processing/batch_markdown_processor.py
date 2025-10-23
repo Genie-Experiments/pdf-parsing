@@ -286,8 +286,6 @@ def main():
     if total_processed_blocks > 0:
         overall_success_rate = (total_successful / total_processed_blocks) * 100
         print(f"📈 Overall success rate: {overall_success_rate:.1f}%")
-    
-    print(f"\n💾 All processed documents have backup files created automatically.")
 
 
 if __name__ == "__main__":

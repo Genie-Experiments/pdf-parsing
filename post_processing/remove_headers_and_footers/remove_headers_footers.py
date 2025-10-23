@@ -2,7 +2,6 @@ import json
 import re
 import sys
 import argparse
-import shutil
 import os
 from pathlib import Path
 
@@ -10,19 +9,7 @@ from pathlib import Path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
 from get_markdown_file_path import get_markdown_file_path
 
-def create_backup(file_path):
-    """Create a backup of the original markdown file"""
-    # Get the stem (filename without extension) and suffix
-    stem = file_path.stem
-    suffix = file_path.suffix
-    
-    # Create backup filename: original_filename_backup.md
-    backup_filename = f"{stem}_backup{suffix}"
-    backup_path = file_path.parent / backup_filename
-    
-    shutil.copy2(file_path, backup_path)
-    print(f"Backup created: {backup_path}")
-    return backup_path
+
 
 def load_json_data(json_file):
     """Load and parse the JSON file"""
@@ -165,9 +152,6 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
     # Create paths
     markdown_path = Path(markdown_file)
     
-    # Create backup
-    backup_path = create_backup(markdown_path)
-    
     # Load JSON data
     json_data = load_json_data(json_file)
     
@@ -246,7 +230,6 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
             print(f"Output written to '{output_file}'")
         else:
             print(f"File updated in place")
-        print(f"Original backup saved as: {backup_path}")
             
     except Exception as e:
         print(f"Error writing output file: {e}")
@@ -318,10 +301,6 @@ def remove_headers_footers_batch(results_directory: str):
                 with open(markdown_path, 'r', encoding='utf-8') as file:
                     markdown_content = file.read()
                 
-                # Create backup
-                markdown_path_obj = Path(markdown_path)
-                backup_path = create_backup(markdown_path_obj)
-                
                 # Process each page
                 total_removals = 0
                 updated_content = markdown_content
@@ -368,7 +347,7 @@ def remove_headers_footers_batch(results_directory: str):
                     file.write(updated_content)
                 
                 successful_removals += 1
-                print(f"  → Removed {total_removals} headers/footers, backup: {os.path.basename(backup_path)}")
+                print(f"  → Removed {total_removals} headers/footers")
                 
             except Exception as e:
                 failed_removals += 1
