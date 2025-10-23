@@ -4,6 +4,8 @@ from post_processing.markdown_sections_post_processing.fix_markdown_sections imp
 from post_processing.markdown_sections_post_processing.section_hierarchy_from_pdf import batch_process_pdfs
 from post_processing.fix_ocr_errors.get_text_from_pdf import extract_all_pdf_texts
 from post_processing.fix_ocr_errors.fix_ocr_errors import fix_ocr_errors_batch
+from post_processing.remove_headers_and_footers.insert_page_breaks import insert_page_breaks_batch
+from post_processing.remove_headers_and_footers.remove_headers_footers import remove_headers_footers_batch
 import config.config as config
 
 # Import configuration settings
@@ -61,7 +63,14 @@ if __name__ == "__main__":
     print("="*60)
     fix_ocr_errors_batch(OUTPUT_DIRECTORY, RAW_PDF_TEXT_DIR)
 
-    # 7. Remove page headers and footers from markdown files
+    # 7. Insert page breaks in markdown files
     print("\n" + "="*60)
-    print("STEP 7: Removing page headers and footers from markdown files")
+    print("STEP 7: Inserting page breaks in markdown files")
     print("="*60)
+    insert_page_breaks_batch(OUTPUT_DIRECTORY)
+
+    # 8. Remove headers and footers from markdown files
+    print("\n" + "="*60)
+    print("STEP 8: Removing headers and footers from markdown files")
+    print("="*60)
+    remove_headers_footers_batch(OUTPUT_DIRECTORY)
