@@ -21,19 +21,25 @@ SEGMENTS_TO_REFINE = config.SEGMENTS_TO_REFINE
 RAW_PDF_TEXT_DIR = config.RAW_PDF_TEXT_DIR
 
 if __name__ == "__main__":
-    # 1. Extract raw text from all PDF files
-    print("="*60)
-    print("STEP 1: Extracting raw text from PDF files")
-    print("="*60)
-    extract_all_pdf_texts(DATA_DIRECTORY, RAW_PDF_TEXT_DIR)
-    
-    # 2. Process PDF Files recursively from a directory
+
+    # 1. Process PDF Files recursively from a directory
     print("\n" + "="*60)
-    print("STEP 2: Processing PDF files with Dolphin model")
+    print("STEP 1: Processing PDF files for extracting base line markdown with Dolphin model")
     print("="*60)
     process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
 
-    # 3. Generate section hierarchy JSONs from PDFs
+    print ("\n" + "="*60)
+    print("Starting Post-Processing Steps.....")
+    
+    # Post-Processing Steps
+
+    # 2. Extract raw text from all PDF files
+    print("="*60)
+    print("STEP 2: Extracting raw text from all PDF files and storing them in {RAW_PDF_TEXT_DIR} folder")
+    print("="*60)
+    extract_all_pdf_texts(DATA_DIRECTORY, RAW_PDF_TEXT_DIR)
+    
+    # # 3. Generate section hierarchy JSONs from PDFs
     print("\n" + "="*60)
     print("STEP 3: Generating section hierarchy JSONs from PDFs")
     print("="*60)
@@ -62,26 +68,29 @@ if __name__ == "__main__":
     print("="*60)
     process_all_json_files(OUTPUT_DIRECTORY, SEGMENTS_TO_REFINE, PROCESS_CODE_USING_LLM, PROCESS_FIGURES_USING_LLM)
 
-    # 6. Batch fix markdown section hierarchy using hierarchy JSON files
+    # 6. Insert page breaks in markdown files
     print("\n" + "="*60)
-    print("STEP 6: Fixing markdown section hierarchy")
-    print("="*60)
-    batch_fix_markdown_sections(HIERARCHY_JSON_DIRECTORY, OUTPUT_DIRECTORY)
-
-    # 7. Fix OCR errors in the markdown files
-    print("\n" + "="*60)
-    print("STEP 7: Fixing OCR errors in markdown files")
-    print("="*60)
-    fix_ocr_errors_batch(OUTPUT_DIRECTORY, RAW_PDF_TEXT_DIR)
-
-    # 8. Insert page breaks in markdown files
-    print("\n" + "="*60)
-    print("STEP 8: Inserting page breaks in markdown files")
+    print("STEP 6: Inserting page breaks in markdown files")
     print("="*60)
     insert_page_breaks_batch(OUTPUT_DIRECTORY)
 
-    # 9. Remove headers and footers from markdown files
+    # 7. Remove headers and footers from markdown files
     print("\n" + "="*60)
-    print("STEP 9: Removing headers and footers from markdown files")
+    print("STEP 7: Removing headers and footers from markdown files")
     print("="*60)
     remove_headers_footers_batch(OUTPUT_DIRECTORY)
+
+    # 8. Fix OCR errors in the markdown files
+    print("\n" + "="*60)
+    print("STEP 8: Fixing OCR errors in markdown files")
+    print("="*60)
+    fix_ocr_errors_batch(OUTPUT_DIRECTORY, RAW_PDF_TEXT_DIR)
+
+
+    # 9. Batch fix markdown section hierarchy using hierarchy JSON files
+    print("\n" + "="*60)
+    print("STEP 9: Fixing markdown section hierarchy")
+    print("="*60)
+    batch_fix_markdown_sections(HIERARCHY_JSON_DIRECTORY, OUTPUT_DIRECTORY)
+
+    
