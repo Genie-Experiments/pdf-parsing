@@ -78,7 +78,7 @@ def find_pdf_files(directory):
 
 def get_output_path(pdf_path, data_dir, output_dir):
     """
-    Generate the output path for a text file, maintaining directory structure.
+    Generate the output path for a text file, creating a subfolder with the PDF name.
     
     Args:
         pdf_path (str): Path to the PDF file
@@ -91,12 +91,23 @@ def get_output_path(pdf_path, data_dir, output_dir):
     # Get relative path from data directory
     rel_path = os.path.relpath(pdf_path, data_dir)
     
-    # Change extension from .pdf to .txt
-    base_name = os.path.splitext(rel_path)[0]
-    txt_filename = f"{base_name}.txt"
+    # Get the directory path and filename
+    rel_dir = os.path.dirname(rel_path)
+    filename = os.path.basename(pdf_path)
     
-    # Create full output path
-    output_path = os.path.join(output_dir, txt_filename)
+    # Get PDF name without extension
+    pdf_name = os.path.splitext(filename)[0]
+    
+    # Create subfolder with PDF name and text file with same name
+    if rel_dir:
+        # If PDF is in a subdirectory, maintain that structure
+        subfolder_path = os.path.join(output_dir, rel_dir, pdf_name)
+    else:
+        # If PDF is in root directory
+        subfolder_path = os.path.join(output_dir, pdf_name)
+    
+    txt_filename = f"{pdf_name}.txt"
+    output_path = os.path.join(subfolder_path, txt_filename)
     
     return output_path
 
