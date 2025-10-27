@@ -12,8 +12,8 @@ venv/
 # env file
 .env
 
-# Dolphin model files
-Dolphin/hf_model/*.safetensors
+# # Dolphin model files
+# Dolphin/hf_model/*.safetensors
 
 # Data directory - contains PDF files that should not be tracked
 Data/
@@ -21,7 +21,7 @@ Data/
 # Results directory - contains generated output files
 Results
 
-Processed-Images-By-Dolphin/
+/Processed-Images-By-Dolphin
 
 temp_results/
 temp_raw_text/
@@ -29,3 +29,6 @@ temp_raw_text/
 pdfs_raw_text/
 
 ground_truth.md
+
+.venv
+temp_data
