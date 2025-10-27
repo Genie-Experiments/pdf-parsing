@@ -65,7 +65,7 @@ def create_markdown_backup(source_dir, backup_suffix="_backup"):
         return None
 
 
-
+# Helper function to list markdown files (for testing purposes)
 def list_markdown_files(directory):
     """
     List all markdown files in a directory (for verification purposes).
@@ -83,22 +83,3 @@ def list_markdown_files(directory):
                 if file.lower().endswith('.md'):
                     md_files.append(os.path.join(root, file))
     return md_files
-
-
-
-
-if __name__ == "__main__":
-    # Example usage for testing
-    test_dir = "./temp_result"  # or "./Results"
-    backup_count = create_markdown_backup(test_dir)
-    if backup_count:
-        print(f"Backup created successfully: {backup_count} files backed up")
-        
-        # List all markdown files (including backups) for verification
-        all_md_files = list_markdown_files(test_dir)
-        backup_files = [f for f in all_md_files if '_backup.md' in f]
-        print(f"Backup files created: {len(backup_files)}")
-        for file in backup_files[:5]:  # Show first 5 backup files
-            print(f"  - {file}")
-        if len(backup_files) > 5:
-            print(f"  ... and {len(backup_files) - 5} more backup files")

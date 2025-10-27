@@ -27,3 +27,5 @@ temp_results/
 temp_raw_text/
 
 pdfs_raw_text/
+
+ground_truth.md
