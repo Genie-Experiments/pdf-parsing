@@ -1,5 +1,0 @@
-~~strikethrough content~~
-
-~
-
-\*
