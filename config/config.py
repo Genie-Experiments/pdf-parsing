@@ -8,14 +8,18 @@ the PDF parsing pipeline application.
 # Directory paths
 DATA_DIRECTORY = "./temp_data"  # Primary directory containing PDFs (searches recursively at any depth)         
 OUTPUT_DIRECTORY = "./temp_results"  # Output directory (maintains same structure as input)
-
-DOLPHIN_SCRIPT = "./Dolphin/demo_page.py" # Do not modify this line
-MODEL_PATH = "./Dolphin/hf_model" # Do not modify this line
-HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory containing TOC JSON files with section hierarchy
-HTML_TO_MARKDOWN_DIR = "./html-to-markdown"  # Directory containing html-to-markdown binaries
 PROCESSED_IMAGES_DIR = "./processed_images_by_dolphin"  # Directory to save processed images by Dolphin
-
 RAW_PDF_TEXT_DIR = "./temp_raw_text"  # Directory to store raw extracted PDF texts
+HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory containing TOC JSON files with section hierarchy
+
+
+# Do not modify these lines
+# ------------------------------------------------------------------------------------------------------------------------
+DOLPHIN_SCRIPT = "./Dolphin/demo_page.py" # Script to run Dolphin OCR processing
+MODEL_PATH = "./Dolphin/hf_model" # Path to Dolphin OCR model
+HTML_TO_MARKDOWN_DIR = "./html-to-markdown"  # Directory containing html-to-markdown binaries
+
+# ------------------------------------------------------------------------------------------------------------------------
 
 # Processing configuration flags
 PROCESS_CODE_USING_LLM = False  # Set to True to process code segments with LLM (GPT-4o Vision API)
