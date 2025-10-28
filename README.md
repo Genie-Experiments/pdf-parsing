@@ -1,11 +1,10 @@
 # PDF Parsing Pipeline with Dolphin AI Model
 
-A comprehensive PDF document parsing pipeline that uses ByteDance's Dolphin AI model to extract and process various document elements including tables, code blocks, and figures from PDF files. For the tables only, the extracted HTML tables are converted to clean Markdown format for better readability and processing using html-to-markdown repository.
+A comprehensive PDF document parsing pipeline that uses ByteDance's Dolphin AI model to extract and process various document elements including tables, code blocks, and figures from PDF files.
 ## 🌟 Features
 
 - **Batch PDF Processing**: Process multiple PDF files in a directory simultaneously
 - **AI-Powered Document Analysis**: Uses Dolphin model for intelligent document layout understanding
-- **HTML to Markdown Conversion**: Automatically converts extracted HTML tables(by Dolphin) to clean Markdown format
 - **LLM-Enhanced Code Processing**: Optional high-quality code extraction using OpenAI GPT-4o Vision API
 - **Intelligent Section Hierarchy Fixing**: Automatically corrects markdown heading levels using TOC JSON structure matching
 - **Structured Output**: Generates organized JSON and Markdown outputs for each processed document
@@ -15,42 +14,60 @@ A comprehensive PDF document parsing pipeline that uses ByteDance's Dolphin AI m
 - Python 3.10 or higher
 - Windows, macOS, or Linux
 - CUDA-compatible GPU (recommended for faster processing)
-- Git LFS (for downloading model files)
 
 ## 🚀 Installation
+
+Follow these steps to properly set up the repository:
 
 ### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Genie-Experiments/pdf-parsing.git
-cd pdf-parsing-pipeline
 ```
 
-### 2. Install Dependencies
-
-Install the required Python packages:
+### 2. Initialize Submodules
 
 ```bash
-# Install main project dependencies
-pip install -e .
-
-# Install Dolphin model dependencies
-pip install -r Dolphin/requirements.txt
+git submodule update --init
 ```
 
-The main dependencies include:
-- `torch` and `torchvision` (PyTorch framework)
-- `transformers` (Hugging Face transformers)
-- `pillow` (Image processing)
-- `pymupdf` (PDF processing)
-- `opencv-python` (Computer vision)
-- `openai` (For LLM-based code processing)
-- `python-dotenv` (Environment variables)
-- And other supporting libraries
+### 3. Install Dependencies
 
-### 3. Configure Environment Variables (Optional)
+```bash
+uv sync
+```
 
-For LLM-based code processing, create a `.env` file:
+### 4. Activate Virtual Environment
+
+```bash
+source .venv/bin/activate
+```
+
+### 5. Download the Dolphin Model
+
+```bash
+cd Dolphin
+huggingface-cli download ByteDance/Dolphin-1.5 --local-dir ./hf_model
+cd ..
+```
+
+### 6. Configure Settings
+
+Set the directory paths and settings in the config file: `pdf-parsing/config/config.py`
+
+Required configuration options:
+- `DATA_DIRECTORY`: Directory containing PDF files to process
+- `OUTPUT_DIRECTORY`: Directory for output results
+- `PROCESSED_IMAGES_DIR`: Directory to save processed images by Dolphin
+- `RAW_PDF_TEXT_DIR`: Directory to store raw extracted PDF texts
+- `HIERARCHY_JSON_DIRECTORY`: Directory to store pdf's section hierarchy
+- `PROCESS_CODE_USING_LLM`: Enable LLM-based code processing (requires OpenAI API key)
+- `PROCESS_FIGURES_USING_LLM`: Enable LLM-based figure processing (requires OpenAI API key)
+- `SEGMENTS_TO_REFINE`: Types of segments to refine (supported: "code", "fig", "tab")
+
+### 7. Configure Environment Variables (Optional)
+
+For LLM-based processing, create a `.env` file:
 
 ```bash
 cp .env.example .env
@@ -58,60 +75,42 @@ cp .env.example .env
 ```
 
 Required environment variables:
-- `OPENAI_API_KEY`: Your OpenAI API key (required only if using LLM code processing)
+- `OPENAI_API_KEY`: Your OpenAI API key (required only if using LLM processing)
 
-### 3. Download the Dolphin Model
-
-You have two options for downloading the pre-trained Dolphin model:
-
-**Option A: Download from Hugging Face (Recommended)**
+### 8. Run the Pipeline
 
 ```bash
-cd Dolphin
-git lfs install
-git clone https://huggingface.co/ByteDance/Dolphin ./hf_model
-```
-
-**Option B: Using Hugging Face CLI**
-
-```bash
-cd Dolphin
-pip install huggingface_hub
-huggingface-cli download ByteDance/Dolphin --local-dir ./hf_model
-```
-
-### 4. Build HTML to Markdown Converter (Optional)
-
-If you need to rebuild the HTML to Markdown converter:
-
-```bash
-cd html-to-markdown
-go build -o html2markdown.exe
+python main.py
 ```
 
 ## ⚙️ Configuration
 
-Before running the pipeline, you may need to adjust the configuration in `main.py`:
+All configuration settings are managed in the `config/config.py` file. Key configuration options include:
 
 ```python
-# Define paths
-DATA_DIRECTORY = "./test-data"        # Directory containing PDF files to process
-OUTPUT_DIRECTORY = "./results"        # Directory for output results
-DOLPHIN_SCRIPT = "./Dolphin/demo_page_hf.py"  # Dolphin inference script
-MODEL_PATH = "./Dolphin/hf_model"     # Path to downloaded Dolphin model
+# Directory paths
+DATA_DIRECTORY = "./temp_data"                    # Primary directory containing PDFs
+OUTPUT_DIRECTORY = "./temp_results"               # Output directory
+PROCESSED_IMAGES_DIR = "./processed_images_by_dolphin"  # Processed images directory
+RAW_PDF_TEXT_DIR = "./temp_raw_text"             # Raw extracted PDF texts
+HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"   # JSON files containing pdf's section hierarchy
 
-# Configuration flags
-PROCESS_CODE_USING_LLM = False        # Enable LLM-based code processing (requires OpenAI API key)
-SEGMENTS_TO_EXTRACT = ["tab", "code"] # Types of segments to extract and process
+# Processing configuration flags
+PROCESS_CODE_USING_LLM = False                   # Enable LLM-based code processing
+PROCESS_FIGURES_USING_LLM = False                # Enable LLM-based figure processing
+SEGMENTS_TO_REFINE = ["code", "fig"]             # Types of segments to refine
 ```
 
 ### Configuration Options:
 
-- **DATA_DIRECTORY**: Path to the folder containing PDF files you want to process
-- **OUTPUT_DIRECTORY**: Path where processed results will be saved
-- **MODEL_PATH**: Path to the Dolphin model (should match where you downloaded it)
+- **DATA_DIRECTORY**: Path to the folder containing PDF files you want to process (searches recursively)
+- **OUTPUT_DIRECTORY**: Path where processed results will be saved (maintains same structure as input)
+- **PROCESSED_IMAGES_DIR**: Directory to save processed images by Dolphin
+- **RAW_PDF_TEXT_DIR**: Directory to store raw extracted PDF texts
+- **HIERARCHY_JSON_DIRECTORY**: Directory to store JSON files with section hierarchy
 - **PROCESS_CODE_USING_LLM**: Enable high-quality code extraction using OpenAI GPT-4o Vision API
-- **SEGMENTS_TO_EXTRACT**: List of segment types to extract (supported: "tab", "code", "fig")
+- **PROCESS_FIGURES_USING_LLM**: Enable high-quality figure processing using OpenAI GPT-4o Vision API
+- **SEGMENTS_TO_REFINE**: List of segment types to refine (supported: "code", "fig")
 
 ### LLM Code Processing Feature
 
@@ -125,37 +124,71 @@ When `PROCESS_CODE_USING_LLM=True`, the pipeline will:
 7. **Replace original text** with the LLM-processed code in Markdown files
 
 This feature provides significantly better code extraction quality compared to traditional OCR methods, especially for complex code with special characters, indentation, and formatting.
-## 📁 Project Structure
 
-```
-pdf-parsing-pipeline/
-├── main.py                           # Main pipeline orchestrator
-├── process_pdf_files.py              # PDF processing logic
-├── process_json_files.py             # JSON results processing
-├── extract_segments.py               # Document segment extraction
-├── convert_html_to_markdown.py       # HTML to Markdown conversion
-├── replace_html_with_markdown.py     # HTML replacement utilities
-├── test-data/                        # Sample PDF files
-│   ├── *.pdf                        # Your PDF files go here
-├── results/                          # Processing outputs
-│   └── [pdf-name]/                   # Individual PDF results
-│       ├── recognition.json          # Structured document data
-│       └── *.md                      # Markdown outputs
-├── Dolphin/                          # ByteDance Dolphin AI model
-│   ├── demo_page_hf.py              # Hugging Face inference script
-│   ├── hf_model/                     # Downloaded model files
-│   ├── requirements.txt              # Python dependencies
-│   └── utils/                        # Utility functions
-└── html-to-markdown/                 # HTML to Markdown converter
-    └── html2markdown.exe             # Converter executable
-```
+## 🔧 How the Project Works
+
+### Processing Pipeline Steps
+
+The pipeline automatically executes the following steps in sequence:
+
+#### Step 1: Initial PDF Processing
+- **Process PDF files** using the Dolphin AI model to extract baseline markdown
+- Converts PDFs to structured markdown with layout analysis
+- Creates JSON files containing document structure and element coordinates
+
+#### Step 2: Raw Text Extraction
+- **Extract raw text** from all PDF files using PyMuPDF
+- Stores clean text in `RAW_PDF_TEXT_DIR` for later OCR error correction
+- Maintains original document structure and formatting
+
+#### Step 3: Section Hierarchy Generation
+- **Generate section hierarchy JSONs** from PDFs by analyzing text formatting
+- Detects headings based on font size, bold formatting, and structure
+- Creates TOC (Table of Contents) structure for later markdown heading correction
+- Configurable parameters:
+  - `min_heading_size`: Minimum font size for headings (default: 12)
+  - `max_levels`: Maximum heading depth (default: 6)
+  - `exclude_headers_footers`: Remove headers/footers from hierarchy analysis
+
+#### Step 4: Backup Creation
+- **Create backup** of all markdown files before post-processing
+- Adds `_backup` suffix to preserve original processed files
+- Ensures data safety during intensive post-processing operations
+
+#### Step 5: Segment Refinement
+- **Process JSON files** for segment refinement based on `SEGMENTS_TO_REFINE` configuration
+- Refines specific document elements (code blocks, figures, tables)
+- Optionally uses LLM processing for enhanced code and figure extraction
+
+#### Step 6: Page Break Insertion
+- **Insert page breaks** in markdown files to maintain document structure
+- Adds clear separators between pages for better readability
+- Preserves original document pagination context
+
+#### Step 7: Header and Footer Removal
+- **Remove headers and footers** from markdown files
+- Cleans up repetitive content that appears on every page
+- Improves content quality by removing non-essential document elements
+
+#### Step 8: OCR Error Correction
+- **Fix OCR errors** by comparing processed markdown with raw PDF text
+- Uses fuzzy string matching to identify and correct OCR mistakes
+- Leverages clean raw text extraction to improve accuracy
+- Preserves document structure while enhancing text quality
+
+#### Step 9: Section Hierarchy Correction
+- **Fix markdown section hierarchy** using the generated hierarchy JSON files
+- Corrects heading levels (number of `#` characters) based on document structure
+- Ensures proper markdown heading organization and navigation
+- Matches sections across different document formats for consistency
 
 ## 🏃‍♂️ Usage
 
 ### 1. Prepare Your PDF Files
 
-Place the PDF files you want to process in the `test-data` directory:
+Place the PDF files you want to process in the directory you set in the config file
 
+**Example:** 
 ```bash
 cp your-document.pdf ./test-data/
 ```
@@ -168,70 +201,9 @@ Execute the main pipeline script:
 python main.py
 ```
 
-### 3. Processing Steps
-
-The pipeline will automatically:
-
-1. **Scan** the `test-data` directory for PDF files
-2. **Create** individual output directories for each PDF in `results/`
-3. **Process** each PDF using the Dolphin AI model
-4. **Extract** specified document segments (tables, code, figures)
-5. **Convert** HTML tables to clean Markdown format
-6. **Save** structured results in JSON and Markdown formats
-
-### 4. Fix Markdown Section Hierarchy (New Feature)
-
-The pipeline now includes an intelligent batch processing feature that fixes markdown section hierarchy by matching against Table of Contents (TOC) JSON files:
-
-```bash
-# Preview what files will be processed (dry run)
-python batch_fix_sections.py --dry-run
-
-# Fix all markdown files using TOC JSON structure
-python batch_fix_sections.py
-
-# Use custom directories
-python batch_fix_sections.py --toc-dir ./toc_json_files --results-dir ./Results
-```
-
-This feature:
-- **Automatically matches** TOC JSON files with processed markdown files
-- **Corrects heading levels** (number of `#` characters) based on document hierarchy
-- **Preserves content** while fixing only the structural organization
-- **Processes files in-place** (no new files created)
-- **Provides detailed statistics** on processing success rates
-
-**Example transformation:**
-```markdown
-# Before (incorrect hierarchy)
-## Preface
-### Documentation and Training  
-## Introduction
-### Overview
-
-# After (corrected hierarchy)
-# Preface
-## Documentation and Training
-# Introduction  
-## Overview
-```
-
-### 5. Check Results
-
-After processing, check the `results` directory:
-
-```
-results/
-└── your-document/
-    ├── recognition.json      # Complete document structure
-    ├── page_1.md            # Markdown for page 1
-    ├── page_2.md            # Markdown for page 2
-    └── ...
-```
-
 ## 📊 Output Formats
 
-### JSON Output (`recognition.json`)
+### JSON Output (`doc_name.json`)
 Contains the complete document structure with:
 - Page-by-page layout analysis
 - Element bounding boxes and coordinates
@@ -243,24 +215,6 @@ Contains the complete document structure with:
 - Properly formatted tables
 - Preserved document structure
 - Easy to integrate with documentation workflows
-
-## 🐛 Troubleshooting
-
-### Common Issues:
-
-1. **CUDA Out of Memory**: If you encounter GPU memory issues, the model will automatically fall back to CPU processing.
-
-2. **Model Download Fails**: Ensure you have `git lfs` installed and sufficient disk space (~2-3GB for the model).
-
-3. **HTML Converter Not Found**: Make sure `html2markdown.exe` exists in the `html-to-markdown` directory.
-
-4. **No PDFs Found**: Verify that your PDF files are in the correct directory and have `.pdf` extension.
-
-### Getting Help:
-
-- Check the console output for detailed error messages
-- Ensure all dependencies are properly installed
-- Verify that the Dolphin model is correctly downloaded
 
 ## 📄 License
 
