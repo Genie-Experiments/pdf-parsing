@@ -83,48 +83,6 @@ Required environment variables:
 python main.py
 ```
 
-## ⚙️ Configuration
-
-All configuration settings are managed in the `config/config.py` file. Key configuration options include:
-
-```python
-# Directory paths
-DATA_DIRECTORY = "./temp_data"                    # Primary directory containing PDFs
-OUTPUT_DIRECTORY = "./temp_results"               # Output directory
-PROCESSED_IMAGES_DIR = "./processed_images_by_dolphin"  # Processed images directory
-RAW_PDF_TEXT_DIR = "./temp_raw_text"             # Raw extracted PDF texts
-HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"   # JSON files containing pdf's section hierarchy
-
-# Processing configuration flags
-PROCESS_CODE_USING_LLM = False                   # Enable LLM-based code processing
-PROCESS_FIGURES_USING_LLM = False                # Enable LLM-based figure processing
-SEGMENTS_TO_REFINE = ["code", "fig"]             # Types of segments to refine
-```
-
-### Configuration Options:
-
-- **DATA_DIRECTORY**: Path to the folder containing PDF files you want to process (searches recursively)
-- **OUTPUT_DIRECTORY**: Path where processed results will be saved (maintains same structure as input)
-- **PROCESSED_IMAGES_DIR**: Directory to save processed images by Dolphin
-- **RAW_PDF_TEXT_DIR**: Directory to store raw extracted PDF texts
-- **HIERARCHY_JSON_DIRECTORY**: Directory to store JSON files with section hierarchy
-- **PROCESS_CODE_USING_LLM**: Enable high-quality code extraction using OpenAI GPT-4o Vision API
-- **PROCESS_FIGURES_USING_LLM**: Enable high-quality figure processing using OpenAI GPT-4o Vision API
-- **SEGMENTS_TO_REFINE**: List of segment types to refine (supported: "code", "fig")
-
-### LLM Code Processing Feature
-
-When `PROCESS_CODE_USING_LLM=True`, the pipeline will:
-1. **Detect code blocks** using the Dolphin model
-2. **Extract bounding box coordinates** for each code block
-3. **Locate the corresponding page image** in `Processed-Images-By-Dolphin/`
-4. **Crop the code section** from the page image
-5. **Send the cropped image** to OpenAI GPT-4o Vision API
-6. **Extract and format code** with high accuracy
-7. **Replace original text** with the LLM-processed code in Markdown files
-
-This feature provides significantly better code extraction quality compared to traditional OCR methods, especially for complex code with special characters, indentation, and formatting.
-
 ## 🔧 How the Project Works
 
 ### Processing Pipeline Steps
@@ -182,25 +140,6 @@ The pipeline automatically executes the following steps in sequence:
 - Ensures proper markdown heading organization and navigation
 - Matches sections across different document formats for consistency
 
-## 🏃‍♂️ Usage
-
-### 1. Prepare Your PDF Files
-
-Place the PDF files you want to process in the directory you set in the config file
-
-**Example:** 
-```bash
-cp your-document.pdf ./test-data/
-```
-
-### 2. Run the Pipeline
-
-Execute the main pipeline script:
-
-```bash
-python main.py
-```
-
 ## 📊 Output Formats
 
 ### JSON Output (`doc_name.json`)
@@ -215,6 +154,10 @@ Contains the complete document structure with:
 - Properly formatted tables
 - Preserved document structure
 - Easy to integrate with documentation workflows
+
+### Figures (`.png` files)
+- Figures present in the pdf document are stored in the output directory you specified 
+  in the config file. Example path: `output_dir/doc_name/markdown/figures/figure-1.png` 
 
 ## 📄 License
 
