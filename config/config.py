@@ -6,11 +6,11 @@ the PDF parsing pipeline application.
 """
 
 # Directory paths
-DATA_DIRECTORY = "./temp_data"  # Primary directory containing PDFs (searches recursively at any depth)         
-OUTPUT_DIRECTORY = "./temp_results"  # Output directory (maintains same structure as input)
+DATA_DIRECTORY = "./Data"  # Primary directory containing PDFs (searches recursively at any depth)         
+OUTPUT_DIRECTORY = "./Results"  # Output directory (maintains same structure as input)
 PROCESSED_IMAGES_DIR = "./processed_images_by_dolphin"  # Directory to save processed images by Dolphin
 RAW_PDF_TEXT_DIR = "./temp_raw_text"  # Directory to store raw extracted PDF texts
-HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory containing TOC JSON files with section hierarchy
+HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory to save JSON files with section hierarchy
 
 
 # Do not modify these lines
@@ -26,7 +26,7 @@ PROCESS_CODE_USING_LLM = False  # Set to True to process code segments with LLM 
 PROCESS_FIGURES_USING_LLM = False  # Set to True to process figure segments with LLM (GPT-4o Vision API)
 
 # Segment processing configuration
-SEGMENTS_TO_REFINE = ["code", "fig"]  # Supported: "tab" (tables), "code" (code blocks), "fig" (figures)
+SEGMENTS_TO_REFINE = ["code", "fig", "tab"]  # Supported: "tab" (tables), "code" (code blocks), "fig" (figures)
 
 # Additional configuration options (can be extended as needed)
 # API Configuration

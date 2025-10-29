@@ -5,9 +5,7 @@ import argparse
 import os
 from pathlib import Path
 
-# Add utils directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
-from get_markdown_file_path import get_markdown_file_path
+from utils.get_markdown_file_path import get_markdown_file_path
 
 def load_json_data(json_file):
     """Load and parse the JSON file"""

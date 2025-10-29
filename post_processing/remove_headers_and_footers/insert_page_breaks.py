@@ -4,9 +4,7 @@ import argparse
 import os
 from pathlib import Path
 
-# Add utils directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
-from get_markdown_file_path import get_markdown_file_path
+from utils.get_markdown_file_path import get_markdown_file_path
 
 def replace_page_breaks(input_file, output_file=None):
     """
@@ -165,43 +163,3 @@ def insert_page_breaks_batch(results_directory: str):
     print(f"Failed insertions: {failed_insertions}")
     
     return failed_insertions == 0
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Replace '---' page break markers with numbered markdown comments"
-    )
-    parser.add_argument(
-        'input_file', 
-        help='Path to the input markdown file'
-    )
-    parser.add_argument(
-        '-o', '--output', 
-        help='Path to the output file (optional, defaults to input file)'
-    )
-    
-    args = parser.parse_args()
-    
-    replace_page_breaks(args.input_file, args.output)
-
-
-if __name__ == "__main__":
-    # Check if running with command line arguments or as batch processor
-    if len(sys.argv) == 1:
-        # No arguments provided - run as batch processor with config
-        import sys
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'config'))
-        from config import OUTPUT_DIRECTORY
-        
-        success = insert_page_breaks_batch(OUTPUT_DIRECTORY)
-        
-        if success:
-            print("\n✅ Page break insertion completed successfully!")
-        else:
-            print("\n❌ Page break insertion failed!")
-        
-        sys.exit(0 if success else 1)
-    else:
-        # Command line arguments provided - run original functionality
-        main()
-
