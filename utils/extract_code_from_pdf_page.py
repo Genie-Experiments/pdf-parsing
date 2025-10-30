@@ -1,4 +1,4 @@
-import fitz
+import pymupdf
 from post_processing.code_post_processing.pdf_code_search import normalize_text_for_comparison, fuzzy_match_similarity
 
 def extract_code_from_pdf_page(pdf_path: str, page_number: int, target_code: str) -> str:
@@ -17,7 +17,7 @@ def extract_code_from_pdf_page(pdf_path: str, page_number: int, target_code: str
         print(f"    📖 Opening PDF and extracting text from page {page_number + 1} (PDF index {page_number})...")
         
         # Open PDF and get the specific page
-        pdf_doc = fitz.open(pdf_path)
+        pdf_doc = pymupdf.open(pdf_path)
         
         if page_number >= len(pdf_doc):
             print(f"    ⚠ Page {page_number + 1} not found in PDF (total pages: {len(pdf_doc)})")
