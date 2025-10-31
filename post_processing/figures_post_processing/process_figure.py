@@ -17,18 +17,18 @@ Date: September 2025
 import os
 import json
 import base64
-import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import openai
 from dotenv import load_dotenv
 from utils.get_markdown_file_path import get_markdown_file_path
+from utils.logger import get_logger, log_success, log_error, log_warning
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Constants
 MAX_CONTEXT_LENGTH = 5000
@@ -313,14 +313,14 @@ class VisionDescriptionGenerator:
             
             if response:
                 logger.info("Successfully generated vision-based description")
-                print("  ✓ Generated description using OpenAI Vision (actual image analysis)")
+                log_success("Generated description using OpenAI Vision (actual image analysis)")
                 return response
             
             return None
             
         except Exception as e:
             logger.error(f"Vision description generation failed: {e}")
-            print(f"  ⚠️ OpenAI Vision failed: {str(e)}")
+            log_warning(f"OpenAI Vision failed: {str(e)}")
             return None
     
     def _encode_image_to_base64(self, figure_path: str) -> Optional[str]:
@@ -417,7 +417,7 @@ class ContextDescriptionGenerator:
         """
         if not self.client:
             logger.error("OpenAI client not available for context-based analysis")
-            print("  ✗ OpenAI API key not configured. Cannot generate description.")
+            log_error("OpenAI API key not configured. Cannot generate description.")
             return None
         
         try:
@@ -429,14 +429,14 @@ class ContextDescriptionGenerator:
             
             if response:
                 logger.info("Successfully generated context-based description")
-                print("  ✓ Generated description using OpenAI context-based approach (text only)")
+                log_success("Generated description using OpenAI context-based approach (text only)")
                 return response
             
             return None
             
         except Exception as e:
             logger.error(f"Context description generation failed: {e}")
-            print(f"  ✗ Error generating figure description: {str(e)}")
+            log_error(f"Error generating figure description: {str(e)}")
             return None
     
     def _create_context_prompt(self, figure_path: str, context_text: str) -> str:
@@ -527,7 +527,7 @@ class FigureDescriptionManager:
         """
         if not self.openai_client:
             logger.error("No OpenAI client available for description generation")
-            print("  ✗ OpenAI API key not configured. Cannot generate description.")
+            log_error("OpenAI API key not configured. Cannot generate description.")
             return None
         
         # Strategy 1: Try vision-based analysis (most accurate)
@@ -540,7 +540,7 @@ class FigureDescriptionManager:
         
         # Strategy 2: Fall back to context-based analysis
         logger.info("Falling back to context-based description generation")
-        print("  ℹ️ Using context-based description (vision analysis failed or unavailable)")
+        logger.info("Using context-based description (vision analysis failed or unavailable)")
         
         return self.context_generator.generate_context_description(
             figure_path, context_text
@@ -592,7 +592,7 @@ class MarkdownIntegrator:
             
             if not markdown_path.exists():
                 logger.error(f"Markdown file not found: {markdown_path}")
-                print(f"  ✗ Markdown file not found: {markdown_path}")
+                log_error(f"Markdown file not found: {markdown_path}")
                 return False
             
             # Read current markdown content
@@ -607,7 +607,7 @@ class MarkdownIntegrator:
             
             if updated_content == original_content:
                 logger.warning("Figure text not found in markdown file")
-                print("  ✗ Figure text not found in markdown file")
+                log_error("Figure text not found in markdown file")
                 return False
             
             # Write updated content back
@@ -615,7 +615,7 @@ class MarkdownIntegrator:
             
         except Exception as e:
             logger.error(f"Error replacing figure in markdown: {e}")
-            print(f"  ✗ Error replacing figure in markdown: {str(e)}")
+            log_error(f"Error replacing figure in markdown: {str(e)}")
             return False
     
     def _read_markdown_file(self, markdown_path: Path) -> Optional[str]:
@@ -675,7 +675,7 @@ def process_figure_element(
         True if processing was successful, False otherwise
     """
     try:
-        print(f"\nFound FIG:")
+        logger.info("Found FIG:")
         
         # Initialize processors
         figure_processor = FigureProcessor()
@@ -692,43 +692,43 @@ def process_figure_element(
         
         # Validate figure
         if not info["image_exists"]:
-            print(f"  ✗ Figure image not found: {info['relative_figure_path']}")
+            log_error(f"Figure image not found: {info['relative_figure_path']}")
             return False
         
-        print(f"\n  Extracting figure information and context...")
-        print(f"  ✓ Figure image found: {info['relative_figure_path']}")
-        print(f"  Context length: {len(info['context_text'])} characters")
+        logger.info("Extracting figure information and context...")
+        log_success(f"Figure image found: {info['relative_figure_path']}")
+        logger.info(f"Context length: {len(info['context_text'])} characters")
         
         # Generate AI description
-        print(f"\n  Generating figure description using AI...")
+        logger.info("Generating figure description using AI...")
         
         description = description_manager.generate_description(
             info["figure_path"], info["context_text"]
         )
         
         if not description:
-            print(f"  ✗ Failed to generate figure description")
+            log_error("Failed to generate figure description")
             return False
         
         # Display generated description
         _display_generated_description(description)
         
         # Integrate with markdown
-        print(f"\n  Replacing figure text with description in markdown...")
+        logger.info("Replacing figure text with description in markdown...")
         success = markdown_integrator.search_and_replace_figure(
             info["figure_text"], description, json_file_path
         )
         
         if success:
-            print(f"  ✓ Figure text successfully replaced with description!")
+            log_success("Figure text successfully replaced with description!")
         else:
-            print(f"  ✗ Failed to replace figure text with description")
+            log_error("Failed to replace figure text with description")
         
         return success
         
     except Exception as e:
         logger.error(f"Error processing figure element: {e}")
-        print(f"  ✗ Error processing figure: {str(e)}")
+        log_error(f"Error processing figure: {str(e)}")
         return False
 
 
@@ -738,24 +738,24 @@ def _display_figure_metadata(info: Dict[str, Any]) -> None:
     
     bbox = metadata.get("bbox", [])
     if bbox:
-        print(f"  Bounding Box : {bbox}")
+        logger.info(f"Bounding Box: {bbox}")
     
     reading_order = metadata.get("reading_order")
     if reading_order is not None:
-        print(f"  Reading Order: {reading_order}")
+        logger.info(f"Reading Order: {reading_order}")
     
     figure_text = info.get("figure_text", "")
     if figure_text:
-        print(f"  Figure Text/Reference :")
-        print(f"{figure_text}")
+        logger.info("Figure Text/Reference:")
+        logger.info(f"{figure_text}")
 
 
 def _display_generated_description(description: str) -> None:
     """Display the generated description for logging purposes."""
-    print(f"\n  Generated Description:")
-    print(f"  ----------------------------------------")
-    print(f"{description}")
-    print(f"  ----------------------------------------")
+    logger.info("Generated Description:")
+    logger.info("----------------------------------------")
+    logger.info(f"{description}")
+    logger.info("----------------------------------------")
 
 
 # Backward compatibility functions

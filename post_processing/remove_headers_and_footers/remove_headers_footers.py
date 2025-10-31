@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 
 from utils.get_markdown_file_path import get_markdown_file_path
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
 
 def load_json_data(json_file):
     """Load and parse the JSON file"""
@@ -13,10 +17,10 @@ def load_json_data(json_file):
         with open(json_file, 'r', encoding='utf-8') as file:
             return json.load(file)
     except FileNotFoundError:
-        print(f"Error: JSON file '{json_file}' not found.")
+        log_error(f"JSON file '{json_file}' not found.")
         sys.exit(1)
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON file: {e}")
+        log_error(f"Error parsing JSON file: {e}")
         sys.exit(1)
 
 def extract_headers_footers(json_data):
@@ -155,7 +159,7 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
     headers_footers = extract_headers_footers(json_data)
     
     if not headers_footers:
-        print("No headers or footers found in JSON data.")
+        log_warning("No headers or footers found in JSON data.")
         return
     
     # Read markdown content
@@ -163,7 +167,7 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
         with open(markdown_file, 'r', encoding='utf-8') as file:
             markdown_content = file.read()
     except FileNotFoundError:
-        print(f"Error: Markdown file '{markdown_file}' not found.")
+        log_error(f"Markdown file '{markdown_file}' not found.")
         sys.exit(1)
     
     # Process each page
@@ -173,7 +177,7 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
     for page_num in sorted(headers_footers.keys()):
         # Skip header/footer removal for the first page
         if page_num == 1:
-            print("Skipping header/footer removal for page 1")
+            logger.info("Skipping header/footer removal for page 1")
             continue
 
         page_headers = headers_footers[page_num]['headers']
@@ -186,7 +190,7 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
         page_content = get_page_content(updated_content, page_num)
         
         if not page_content:
-            print(f"Warning: No content found for page {page_num}")
+            log_warning(f"No content found for page {page_num}")
             continue
         
         original_page_content = page_content
@@ -197,14 +201,14 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
             if header_text in page_content:
                 page_content = remove_text_from_content(page_content, header_text)
                 removals_on_page += 1
-                print(f"Removed header from page {page_num}: '{header_text[:50]}...'")
+                logger.info(f"Removed header from page {page_num}: '{header_text[:50]}...'")
         
         # Remove footers
         for footer_text in page_footers:
             if footer_text in page_content:
                 page_content = remove_text_from_content(page_content, footer_text)
                 removals_on_page += 1
-                print(f"Removed footer from page {page_num}: '{footer_text[:50]}...'")
+                logger.info(f"Removed footer from page {page_num}: '{footer_text[:50]}...'")
         
         # Update the markdown content if changes were made
         if removals_on_page > 0:
@@ -220,15 +224,15 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
         with open(output_file, 'w', encoding='utf-8') as file:
             file.write(updated_content)
         
-        print(f"\nSuccessfully processed '{markdown_file}'")
-        print(f"Total headers/footers removed: {total_removals}")
+        log_success(f"Successfully processed '{markdown_file}'")
+        logger.info(f"Total headers/footers removed: {total_removals}")
         if output_file != markdown_file:
-            print(f"Output written to '{output_file}'")
+            logger.info(f"Output written to '{output_file}'")
         else:
-            print(f"File updated in place")
+            logger.info("File updated in place")
             
     except Exception as e:
-        print(f"Error writing output file: {e}")
+        log_error(f"Error writing output file: {e}")
         sys.exit(1)
 
 
@@ -239,13 +243,13 @@ def remove_headers_footers_batch(results_directory: str):
     Args:
         results_directory: Directory containing JSON and markdown files from processing
     """
-    print("Starting batch header/footer removal...")
-    print(f"Results directory: {results_directory}")
-    print("-" * 60)
+    logger.info("Starting batch header/footer removal...")
+    logger.info(f"Results directory: {results_directory}")
+    logger.info("-" * 60)
     
     # Check if directory exists
     if not os.path.exists(results_directory):
-        print(f"Error: Results directory '{results_directory}' does not exist!")
+        log_error(f"Results directory '{results_directory}' does not exist!")
         return False
     
     # Find all JSON files in the results directory (recursively)
@@ -256,10 +260,10 @@ def remove_headers_footers_batch(results_directory: str):
                 json_files.append(os.path.join(root, file))
     
     if not json_files:
-        print(f"No JSON files found in '{results_directory}'")
+        log_warning(f"No JSON files found in '{results_directory}'")
         return True
     
-    print(f"Found {len(json_files)} JSON files to process\n")
+    logger.info(f"Found {len(json_files)} JSON files to process")
     
     successful_removals = 0
     failed_removals = 0
@@ -269,14 +273,14 @@ def remove_headers_footers_batch(results_directory: str):
         try:
             # Get relative path from results directory for display
             rel_json_path = os.path.relpath(json_path, results_directory)
-            print(f"[{i}/{len(json_files)}] Processing: {rel_json_path}")
+            logger.info(f"[{i}/{len(json_files)}] Processing: {rel_json_path}")
             
             # Use utility function to get markdown file path
             markdown_path = str(get_markdown_file_path(json_path))
             
             # Check if markdown file exists
             if not os.path.exists(markdown_path):
-                print(f"  → Skipping (markdown file not found): {markdown_path}")
+                log_warning(f"Skipping (markdown file not found): {markdown_path}")
                 skipped_removals += 1
                 continue
             
@@ -289,7 +293,7 @@ def remove_headers_footers_batch(results_directory: str):
                 headers_footers = extract_headers_footers(json_data)
                 
                 if not headers_footers:
-                    print(f"  → No headers or footers found in JSON data")
+                    logger.info("No headers or footers found in JSON data")
                     skipped_removals += 1
                     continue
                 
@@ -343,26 +347,24 @@ def remove_headers_footers_batch(results_directory: str):
                     file.write(updated_content)
                 
                 successful_removals += 1
-                print(f"  → Removed {total_removals} headers/footers")
+                log_success(f"Removed {total_removals} headers/footers")
                 
             except Exception as e:
                 failed_removals += 1
-                print(f"  → Error processing files: {str(e)}")
+                log_error(f"Error processing files: {str(e)}")
                 continue
                 
         except Exception as e:
             failed_removals += 1
-            print(f"  → Error processing {rel_json_path}: {str(e)}")
-        
-        print()  # Empty line for readability
+            log_error(f"Error processing {rel_json_path}: {str(e)}")
     
     # Print summary
-    print("=" * 60)
-    print("Header/Footer Removal Summary:")
-    print(f"Total JSON files found: {len(json_files)}")
-    print(f"Successfully processed: {successful_removals}")
-    print(f"Skipped files: {skipped_removals}")
-    print(f"Failed removals: {failed_removals}")
+    logger.info("=" * 60)
+    logger.info("Header/Footer Removal Summary:")
+    logger.info(f"Total JSON files found: {len(json_files)}")
+    logger.info(f"Successfully processed: {successful_removals}")
+    logger.info(f"Skipped files: {skipped_removals}")
+    logger.info(f"Failed removals: {failed_removals}")
     
     return failed_removals == 0
 
@@ -399,9 +401,9 @@ if __name__ == "__main__":
         success = remove_headers_footers_batch(OUTPUT_DIRECTORY)
         
         if success:
-            print("\n✅ Header/footer removal completed successfully!")
+            log_success("Header/footer removal completed successfully!")
         else:
-            print("\n❌ Header/footer removal failed!")
+            log_error("Header/footer removal failed!")
         
         sys.exit(0 if success else 1)
     else:

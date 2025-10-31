@@ -2,15 +2,16 @@ import json
 import re
 from difflib import SequenceMatcher
 from typing import List, Tuple, Optional, Dict
-import logging
 from datetime import datetime
 import os
 import sys
 from pathlib import Path
 
-# Add utils directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'utils'))
-from get_markdown_file_path import get_markdown_file_path
+from utils.get_markdown_file_path import get_markdown_file_path
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
 
 class OCRErrorFixer:
     def __init__(self, json_path: str, extracted_text_path: str, markdown_path: str,
@@ -349,11 +350,11 @@ class OCRErrorFixer:
         
         replacements = []
         
-        print(f"Processing {len(texts_to_fix)} text segments...")
+        logger.info(f"Processing {len(texts_to_fix)} text segments...")
         
         for idx, (ocr_text, metadata) in enumerate(texts_to_fix):
             if idx % 100 == 0:
-                print(f"Progress: {idx}/{len(texts_to_fix)}")
+                logger.info(f"Progress: {idx}/{len(texts_to_fix)}")
             
             page_num = metadata['page']
             
@@ -411,9 +412,9 @@ class OCRErrorFixer:
         with open(log_path, 'w', encoding='utf-8') as f:
             json.dump(replacements, f, indent=2, ensure_ascii=False)
         
-        print(f"\n✓ Corrected markdown saved to: {output_path}")
-        print(f"✓ Made {len(replacements)} corrections")
-        print(f"✓ Correction log saved to: {log_path}")
+        log_success(f"Corrected markdown saved to: {output_path}")
+        log_success(f"Made {len(replacements)} corrections")
+        log_success(f"Correction log saved to: {log_path}")
         
         return self.markdown_content, replacements
 
@@ -439,19 +440,19 @@ def fix_ocr_errors_batch(results_directory: str, raw_pdf_text_directory: str,
     results_directory = os.path.abspath(results_directory)
     raw_pdf_text_directory = os.path.abspath(raw_pdf_text_directory)
     
-    print("Starting batch OCR error correction...")
-    print(f"Results directory: {results_directory}")
-    print(f"Raw PDF text directory: {raw_pdf_text_directory}")
-    print(f"Minimum similarity threshold: {min_similarity}")
-    print("-" * 60)
+    logger.info("Starting batch OCR error correction...")
+    logger.info(f"Results directory: {results_directory}")
+    logger.info(f"Raw PDF text directory: {raw_pdf_text_directory}")
+    logger.info(f"Minimum similarity threshold: {min_similarity}")
+    logger.info("-" * 60)
     
     # Check if directories exist
     if not os.path.exists(results_directory):
-        print(f"Error: Results directory '{results_directory}' does not exist!")
+        log_error(f"Results directory '{results_directory}' does not exist!")
         return False
     
     if not os.path.exists(raw_pdf_text_directory):
-        print(f"Error: Raw PDF text directory '{raw_pdf_text_directory}' does not exist!")
+        log_error(f"Raw PDF text directory '{raw_pdf_text_directory}' does not exist!")
         return False
     
     # Find all JSON files in the results directory (recursively)
@@ -462,10 +463,10 @@ def fix_ocr_errors_batch(results_directory: str, raw_pdf_text_directory: str,
                 json_files.append(os.path.join(root, file))
     
     if not json_files:
-        print(f"No JSON files found in '{results_directory}'")
+        log_warning(f"No JSON files found in '{results_directory}'")
         return True
     
-    print(f"Found {len(json_files)} JSON files to process\n")
+    logger.info(f"Found {len(json_files)} JSON files to process")
     
     successful_corrections = 0
     failed_corrections = 0
@@ -475,7 +476,7 @@ def fix_ocr_errors_batch(results_directory: str, raw_pdf_text_directory: str,
         try:
             # Get relative path from results directory for display
             rel_json_path = os.path.relpath(json_path, results_directory)
-            print(f"[{i}/{len(json_files)}] Processing: {rel_json_path}")
+            logger.info(f"[{i}/{len(json_files)}] Processing: {rel_json_path}")
             
             # Determine the corresponding markdown and text file paths
             base_name = os.path.splitext(os.path.basename(json_path))[0]
@@ -503,12 +504,12 @@ def fix_ocr_errors_batch(results_directory: str, raw_pdf_text_directory: str,
             
             # Check if required files exist
             if not os.path.exists(markdown_path):
-                print(f"  → Skipping (markdown file not found): {markdown_path}")
+                log_warning(f"Skipping (markdown file not found): {markdown_path}")
                 skipped_corrections += 1
                 continue
             
             if not os.path.exists(text_path):
-                print(f"  → Skipping (text file not found): {text_path}")
+                log_warning(f"Skipping (text file not found): {text_path}")
                 skipped_corrections += 1
                 continue
             
@@ -522,23 +523,21 @@ def fix_ocr_errors_batch(results_directory: str, raw_pdf_text_directory: str,
             corrected_md, replacements = fixer.fix_markdown(output_path, min_similarity, skip_labels)
             
             successful_corrections += 1
-            print(f"  → Fixed {len(replacements)} errors, saved to: {os.path.basename(output_path)}")
+            log_success(f"Fixed {len(replacements)} errors, saved to: {os.path.basename(output_path)}")
             
         except Exception as e:
             failed_corrections += 1
-            print(f"  → Error processing {rel_json_path}: {str(e)}")
+            log_error(f"Error processing {rel_json_path}: {str(e)}")
             import traceback
             traceback.print_exc()
-        
-        print()  # Empty line for readability
     
     # Print summary
-    print("=" * 60)
-    print("OCR Error Correction Summary:")
-    print(f"Total JSON files found: {len(json_files)}")
-    print(f"Successfully processed: {successful_corrections}")
-    print(f"Skipped files: {skipped_corrections}")
-    print(f"Failed corrections: {failed_corrections}")
+    logger.info("=" * 60)
+    logger.info("OCR Error Correction Summary:")
+    logger.info(f"Total JSON files found: {len(json_files)}")
+    logger.info(f"Successfully processed: {successful_corrections}")
+    logger.info(f"Skipped files: {skipped_corrections}")
+    logger.info(f"Failed corrections: {failed_corrections}")
     
     return failed_corrections == 0
 
@@ -559,8 +558,8 @@ if __name__ == "__main__":
     )
     
     if success:
-        print("\n✅ OCR error correction completed successfully!")
+        log_success("OCR error correction completed successfully!")
     else:
-        print("\n❌ OCR error correction failed!")
+        log_error("OCR error correction failed!")
     
     sys.exit(0 if success else 1)

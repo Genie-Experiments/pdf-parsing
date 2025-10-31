@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from utils.get_markdown_file_path import get_markdown_file_path
+from utils.logger import get_logger, log_success, log_error, log_warning, log_file_processing, log_processing_stats
 
 def replace_page_breaks(input_file, output_file=None):
     """
@@ -41,20 +42,21 @@ def replace_page_breaks(input_file, output_file=None):
         with open(output_file, 'w', encoding='utf-8') as file:
             file.write(updated_content)
         
-        # Print summary
+        # Log summary
+        logger = get_logger(__name__)
         total_replacements = page_break_counter - 1
-        print(f"Successfully processed '{input_file}'")
-        print(f"Replaced {total_replacements} page break markers")
+        log_success(f"Successfully processed '{input_file}'", logger)
+        logger.info("Replaced %d page break markers", total_replacements)
         if output_file != input_file:
-            print(f"Output written to '{output_file}'")
+            logger.info("Output written to '%s'", output_file)
         else:
-            print(f"File updated in place")
+            logger.info("File updated in place")
             
     except FileNotFoundError:
-        print(f"Error: File '{input_file}' not found.")
+        log_error(f"File '{input_file}' not found", get_logger(__name__))
         sys.exit(1)
     except Exception as e:
-        print(f"Error processing file: {e}")
+        log_error(f"Error processing file: {e}", get_logger(__name__))
         sys.exit(1)
 
 
@@ -65,13 +67,14 @@ def insert_page_breaks_batch(results_directory: str):
     Args:
         results_directory: Directory containing JSON and markdown files from processing
     """
-    print("Starting batch page break insertion...")
-    print(f"Results directory: {results_directory}")
-    print("-" * 60)
+    logger = get_logger(__name__)
+    
+    logger.info("Starting batch page break insertion")
+    logger.info("Results directory: %s", results_directory)
     
     # Check if directory exists
     if not os.path.exists(results_directory):
-        print(f"Error: Results directory '{results_directory}' does not exist!")
+        log_error(f"Results directory '{results_directory}' does not exist!", logger)
         return False
     
     # Find all JSON files in the results directory (recursively)
@@ -82,10 +85,10 @@ def insert_page_breaks_batch(results_directory: str):
                 json_files.append(os.path.join(root, file))
     
     if not json_files:
-        print(f"No JSON files found in '{results_directory}'")
+        logger.warning("No JSON files found in '%s'", results_directory)
         return True
     
-    print(f"Found {len(json_files)} JSON files to process\n")
+    logger.info("Found %d JSON files to process", len(json_files))
     
     successful_insertions = 0
     failed_insertions = 0
@@ -95,14 +98,14 @@ def insert_page_breaks_batch(results_directory: str):
         try:
             # Get relative path from results directory for display
             rel_json_path = os.path.relpath(json_path, results_directory)
-            print(f"[{i}/{len(json_files)}] Processing: {rel_json_path}")
+            logger.info("[%d/%d] Processing: %s", i, len(json_files), rel_json_path)
             
             # Use utility function to get markdown file path
             markdown_path = str(get_markdown_file_path(json_path))
             
             # Check if markdown file exists
             if not os.path.exists(markdown_path):
-                print(f"  → Skipping (markdown file not found): {markdown_path}")
+                log_warning(f"Skipping (markdown file not found): {markdown_path}", logger)
                 skipped_insertions += 1
                 continue
             
@@ -118,7 +121,7 @@ def insert_page_breaks_batch(results_directory: str):
                 matches = re.findall(page_break_pattern, content, flags=re.MULTILINE)
                 
                 if not matches:
-                    print(f"  → No page break markers found")
+                    logger.debug("No page break markers found")
                     skipped_insertions += 1
                     continue
                 
@@ -141,25 +144,20 @@ def insert_page_breaks_batch(results_directory: str):
                 
                 total_replacements = page_break_counter - 1
                 successful_insertions += 1
-                print(f"  → Replaced {total_replacements} page break markers")
+                logger.info("Replaced %d page break markers", total_replacements)
                 
             except Exception as e:
                 failed_insertions += 1
-                print(f"  → Error processing markdown file: {str(e)}")
+                log_error(f"Error processing markdown file: {e}", logger)
                 continue
                 
         except Exception as e:
             failed_insertions += 1
-            print(f"  → Error processing {rel_json_path}: {str(e)}")
-        
-        print()  # Empty line for readability
+            log_error(f"Error processing {rel_json_path}: {e}", logger)
     
-    # Print summary
-    print("=" * 60)
-    print("Page Break Insertion Summary:")
-    print(f"Total JSON files found: {len(json_files)}")
-    print(f"Successfully processed: {successful_insertions}")
-    print(f"Skipped files: {skipped_insertions}")
-    print(f"Failed insertions: {failed_insertions}")
+    # Log summary
+    logger.info("Page Break Insertion Summary:")
+    log_processing_stats(len(json_files), successful_insertions, failed_insertions, logger)
+    logger.info("Skipped files: %d", skipped_insertions)
     
     return failed_insertions == 0

@@ -6,10 +6,10 @@ the PDF parsing pipeline application.
 """
 
 # Directory paths
-DATA_DIRECTORY = "./temp_data"  # Primary directory containing PDFs (searches recursively at any depth)         
-OUTPUT_DIRECTORY = "./temp_results"  # Output directory (maintains same structure as input)
+DATA_DIRECTORY = "./Data"  # Primary directory containing PDFs (searches recursively at any depth)         
+OUTPUT_DIRECTORY = "./Results"  # Output directory (maintains same structure as input)
 PROCESSED_IMAGES_DIR = "./processed_images_by_dolphin"  # Directory to save processed images by Dolphin
-RAW_PDF_TEXT_DIR = "./temp_raw_text"  # Directory to store raw extracted PDF texts
+RAW_PDF_TEXT_DIR = "./pdfs_raw_text"  # Directory to store raw extracted PDF texts
 HIERARCHY_JSON_DIRECTORY = "./section_hierarchy_pdfs"  # Directory to save JSON files with section hierarchy
 
 

@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Tuple, Optional
 from difflib import SequenceMatcher
 from dataclasses import dataclass
 import fitz  # PyMuPDF - Required dependency
+from utils.logger import get_logger, log_success, log_error, log_warning
 
 
 @dataclass
@@ -67,6 +68,12 @@ def detect_content_type(text: str) -> str:
     # Determine content type
     scores = {'code': code_score, 'command': command_score, 'config': config_score}
     max_type = max(scores, key=scores.get)
+    
+    # Get logger for debugging (only if text is substantial for debugging)
+    if len(text) > 50:  # Only log for substantial content
+        logger = get_logger(__name__)
+        logger.debug("Content type detection - scores: code=%d, command=%d, config=%d → %s", 
+                    code_score, command_score, config_score, max_type if scores[max_type] >= 2 else 'mixed/natural')
     
     if scores[max_type] >= 2:
         return max_type
@@ -264,6 +271,7 @@ def search_code_in_pdf(pdf_path: str, json_file_path: str, cleaned_code: str,
     Returns:
         List of CodeMatch objects sorted by confidence score (highest first)
     """
+    logger = get_logger(__name__)
     matches = []
     
     try:
@@ -274,12 +282,12 @@ def search_code_in_pdf(pdf_path: str, json_file_path: str, cleaned_code: str,
         # Check if context is already provided, otherwise extract it
         if 'context_text' in json_element and json_element['context_text']:
             context_text = json_element['context_text']
-            print(f"    Using provided context: {context_text[:50]}...")
+            logger.debug("Using provided context: %s...", context_text[:50])
         else:
             # Get context elements around the code
             context_elements = get_context_elements(json_data, json_element)
             context_text = ' '.join(elem.get('text', '') for elem in context_elements)
-            print(f"    Extracted context: {context_text[:50]}...")
+            logger.debug("Extracted context: %s...", context_text[:50])
         
         # Extract cleaned code content (remove markdown formatting)
         code_content = cleaned_code.strip()
@@ -302,9 +310,15 @@ def search_code_in_pdf(pdf_path: str, json_file_path: str, cleaned_code: str,
                 'mixed': 0.35          # Mixed content - balanced threshold
             }
             min_confidence = adaptive_thresholds.get(content_type, 0.35)
+            logger.debug("Auto-detected content type '%s', using confidence threshold: %.2f", 
+                        content_type, min_confidence)
+        else:
+            logger.debug("Using provided confidence threshold: %.2f", min_confidence)
         
         # Extract text from PDF pages using PyMuPDF
+        logger.info("Opening PDF file: %s", pdf_path)
         pdf_doc = fitz.open(pdf_path)
+        logger.info("Searching through %d PDF pages for code matches", len(pdf_doc))
         
         # Search through PDF pages
         for page_num in range(len(pdf_doc)):
@@ -312,19 +326,26 @@ def search_code_in_pdf(pdf_path: str, json_file_path: str, cleaned_code: str,
             page_text = page.get_text()
             
             # Try different matching strategies
-            matches.extend(_match_with_strategies(
+            page_matches = _match_with_strategies(
                 page_text, code_content, context_text, json_element, 
                 page_num + 1, min_confidence, page, detect_content_type(code_content)
-            ))
+            )
+            matches.extend(page_matches)
+            
+            if page_matches:
+                logger.debug("Found %d matches on page %d", len(page_matches), page_num + 1)
         
         pdf_doc.close()
+        log_success(f"PDF search completed. Found {len(matches)} total matches", logger)
         
     except Exception as e:
-        print(f"Error searching PDF: {e}")
+        log_error(f"Error searching PDF: {e}", logger)
         return []
     
     # Sort matches by confidence score (highest first)
     matches.sort(key=lambda x: x.confidence_score, reverse=True)
+    if matches:
+        logger.info("Best match has confidence score: %.3f", matches[0].confidence_score)
     
     # Remove duplicate matches (same page, similar bbox)
     unique_matches = []
@@ -426,12 +447,14 @@ def find_all_code_matches(pdf_path: str, json_file_path: str,
     Returns:
         Dictionary mapping code block identifiers to their matches
     """
+    logger = get_logger(__name__)
     from clean_and_format_code import clean_and_format_code
     from main import find_code_blocks
     
     try:
         # Get all code blocks from JSON
         code_blocks = find_code_blocks(json_file_path)
+        logger.info("Starting code block matching for %d code blocks", len(code_blocks))
         
         all_matches = {}
         
@@ -448,12 +471,13 @@ def find_all_code_matches(pdf_path: str, json_file_path: str,
             
             if matches:
                 all_matches[block_id] = matches
-                print(f"Found {len(matches)} matches for {block_id}")
+                log_success(f"Found {len(matches)} matches for {block_id}", logger)
             else:
-                print(f"No matches found for {block_id}")
+                log_warning(f"No matches found for {block_id}", logger)
         
+        log_success(f"Code matching completed: {len(all_matches)} blocks with matches found", logger)
         return all_matches
         
     except Exception as e:
-        print(f"Error finding code matches: {e}")
+        log_error(f"Error finding code matches: {e}", logger)
         return {}

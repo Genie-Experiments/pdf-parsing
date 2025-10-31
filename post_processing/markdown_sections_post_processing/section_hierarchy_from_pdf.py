@@ -6,10 +6,11 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# Add config directory to path to import config
-sys.path.append(os.path.join(os.path.dirname(__file__), 'config'))
 from config.config import DATA_DIRECTORY
+from utils.logger import get_logger, log_success, log_error, log_warning
 
+# Configure logging
+logger = get_logger(__name__)
 
 def extract_heading_candidates_from_pdf(pdf_path):
     """
@@ -190,8 +191,8 @@ def assign_hierarchy_levels(heading_candidates, min_heading_size=None, max_level
         else:
             min_heading_size = 10.0
 
-    # print min_heading_size for debugging
-    print(f"Auto-detected minimum heading size: {min_heading_size}")
+    # log min_heading_size for debugging
+    logger.info(f"Auto-detected minimum heading size: {min_heading_size}")
 
     # Filter candidates
     filtered_candidates = []
@@ -344,15 +345,15 @@ def generate_hierarchy_json(pdf_path, output_json_path=None, min_heading_size=No
     Returns:
         Nested dict representing the document section hierarchy
     """
-    print("Processing: {}".format(pdf_path))
+    logger.info("Processing: {}".format(pdf_path))
 
     # Extract candidates
     candidates = extract_heading_candidates_from_pdf(pdf_path)
-    print("Found {} potential heading candidates".format(len(candidates)))
+    logger.info("Found {} potential heading candidates".format(len(candidates)))
 
     # Analyze patterns
     patterns = analyze_font_patterns(candidates)
-    print("Detected {} unique font sizes".format(patterns['unique_sizes']))
+    logger.info("Detected {} unique font sizes".format(patterns['unique_sizes']))
 
     # Assign hierarchy
     hierarchy = assign_hierarchy_levels(
@@ -362,7 +363,7 @@ def generate_hierarchy_json(pdf_path, output_json_path=None, min_heading_size=No
         bold_only,
         exclude_headers_footers
     )
-    print("Assigned {} headings to hierarchy".format(len(hierarchy)))
+    logger.info("Assigned {} headings to hierarchy".format(len(hierarchy)))
 
     # Build parent-child tree
     tree = build_parent_child_tree(hierarchy)
@@ -374,7 +375,7 @@ def generate_hierarchy_json(pdf_path, output_json_path=None, min_heading_size=No
     if output_json_path:
         with open(output_json_path, 'w', encoding='utf-8') as f:
             json.dump(nested_json, f, indent=2, ensure_ascii=False)
-        print("✅ Saved clean hierarchy JSON to: {}".format(output_json_path))
+        log_success("Saved clean hierarchy JSON to: {}".format(output_json_path))
 
     return nested_json
 
@@ -384,7 +385,7 @@ def print_tree_recursive(node, indent=0, max_text_len=60):
     marker = "#" * node["level"]
     indent_str = "  " * indent
     text = node["text"][:max_text_len]
-    print("Page {:3d} | {:6s} | {}{}".format(node['page'], marker, indent_str, text))
+    logger.info("Page {:3d} | {:6s} | {}{}".format(node['page'], marker, indent_str, text))
 
     for child in node["children"]:
         print_tree_recursive(child, indent + 1, max_text_len)
@@ -398,18 +399,18 @@ def print_hierarchy_preview(hierarchy_data, max_items=20):
     """
     # If hierarchy_data is nested dict, pretty print top-level keys
     if isinstance(hierarchy_data, dict):
-        print("\n" + "=" * 80)
-        print("HIERARCHY PREVIEW (Top-level sections)")
-        print("=" * 80)
+        logger.info("=" * 80)
+        logger.info("HIERARCHY PREVIEW (Top-level sections)")
+        logger.info("=" * 80)
         top_keys = list(hierarchy_data.keys())
         for i, k in enumerate(top_keys[:max_items]):
-            print(f"{i+1:3d}. {k}")
+            logger.info(f"{i+1:3d}. {k}")
         if len(top_keys) > max_items:
-            print(f"... and {len(top_keys) - max_items} more top-level sections")
-        print("=" * 80 + "\n")
+            logger.info(f"... and {len(top_keys) - max_items} more top-level sections")
+        logger.info("=" * 80)
     else:
-        # Fallback: just print raw
-        print(json.dumps(hierarchy_data, indent=2, ensure_ascii=False))
+        # Fallback: just log raw
+        logger.info(json.dumps(hierarchy_data, indent=2, ensure_ascii=False))
 
 
 def find_pdf_files(data_directory):
@@ -426,7 +427,7 @@ def find_pdf_files(data_directory):
     data_path = Path(data_directory)
     
     if not data_path.exists():
-        print(f"Warning: Data directory {data_directory} does not exist")
+        log_warning(f"Data directory {data_directory} does not exist")
         return pdf_files
     
     # Recursively find all PDF files
@@ -481,24 +482,24 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
     if data_directory is None:
         data_directory = DATA_DIRECTORY
     
-    print(f"Starting batch processing of PDFs from: {data_directory}")
-    print(f"Output directory: {output_base_dir}")
-    print("=" * 80)
+    logger.info(f"Starting batch processing of PDFs from: {data_directory}")
+    logger.info(f"Output directory: {output_base_dir}")
+    logger.info("=" * 80)
     
     # Find all PDF files
     pdf_files = find_pdf_files(data_directory)
     
     if not pdf_files:
-        print(f"No PDF files found in {data_directory}")
+        log_warning(f"No PDF files found in {data_directory}")
         return {"total_files": 0, "processed": 0, "failed": 0, "skipped": 0}
     
-    print(f"Found {len(pdf_files)} PDF files to process")
+    logger.info(f"Found {len(pdf_files)} PDF files to process")
     
     # Statistics tracking
     stats = {"total_files": len(pdf_files), "processed": 0, "failed": 0, "skipped": 0}
     
     for i, (pdf_path, relative_path) in enumerate(pdf_files, 1):
-        print(f"\n[{i}/{len(pdf_files)}] Processing: {relative_path}")
+        logger.info(f"[{i}/{len(pdf_files)}] Processing: {relative_path}")
         
         try:
             # Create output path
@@ -506,10 +507,10 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
             
             # Check if output already exists
             if os.path.exists(output_json_path):
-                print(f"  ⚠️  JSON already exists: {output_json_path}")
+                log_warning(f"JSON already exists: {output_json_path}")
                 response = input("  Overwrite? (y/N): ").lower().strip()
                 if response != 'y':
-                    print(f"  ⏭️  Skipped: {relative_path}")
+                    log_warning(f"Skipped: {relative_path}")
                     stats["skipped"] += 1
                     continue
             
@@ -526,31 +527,31 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
                 exclude_headers_footers=exclude_headers_footers
             )
             
-            print(f"  ✅ Successfully processed: {relative_path}")
-            print(f"     Saved to: {output_json_path}")
+            log_success(f"Successfully processed: {relative_path}")
+            logger.info(f"Saved to: {output_json_path}")
             
             # Show brief preview
             if isinstance(nested_json, dict) and nested_json:
                 top_sections = list(nested_json.keys())[:3]
-                print(f"     Top sections: {', '.join(top_sections)}")
+                logger.info(f"Top sections: {', '.join(top_sections)}")
                 if len(nested_json) > 3:
-                    print(f"     ... and {len(nested_json) - 3} more sections")
+                    logger.info(f"... and {len(nested_json) - 3} more sections")
             
             stats["processed"] += 1
             
         except Exception as e:
-            print(f"  ❌ Failed to process {relative_path}: {str(e)}")
+            log_error(f"Failed to process {relative_path}: {str(e)}")
             stats["failed"] += 1
     
     # Print final statistics
-    print("\n" + "=" * 80)
-    print("BATCH PROCESSING COMPLETED")
-    print("=" * 80)
-    print(f"Total files found: {stats['total_files']}")
-    print(f"Successfully processed: {stats['processed']}")
-    print(f"Failed: {stats['failed']}")
-    print(f"Skipped: {stats['skipped']}")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info("BATCH PROCESSING COMPLETED")
+    logger.info("=" * 80)
+    logger.info(f"Total files found: {stats['total_files']}")
+    logger.info(f"Successfully processed: {stats['processed']}")
+    logger.info(f"Failed: {stats['failed']}")
+    logger.info(f"Skipped: {stats['skipped']}")
+    logger.info("=" * 80)
     
     return stats
 

@@ -2,8 +2,11 @@ import json
 from post_processing.code_post_processing.handle_code_element import handle_code_element
 from post_processing.figures_post_processing.handle_figure_element import handle_figure_element
 from post_processing.tables_post_processing.handle_table_element import handle_table_element
+from utils.logger import get_logger
 
 def refine_segments(json_file_path, segments_to_extract:list, process_code_using_llm=False, process_figures_using_llm=False):
+    logger = get_logger(__name__)
+    
     # Load the recognition.json file
     with open(json_file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -11,7 +14,7 @@ def refine_segments(json_file_path, segments_to_extract:list, process_code_using
     # Loop through pages and elements
     for page in data.get("pages", []):
         page_number = page.get("page_number")
-        print(f"\n--- Page {page_number} ---")
+        logger.debug("Processing page %d", page_number)
 
         for element in page.get("elements", []):
             label = element.get("label")
@@ -21,9 +24,9 @@ def refine_segments(json_file_path, segments_to_extract:list, process_code_using
                 text = element.get("text")
                 reading_order = element.get("reading_order")
 
-                print(f"\nFound {label.upper()}:")
-                print(f"  Bounding Box : {bbox}")
-                print(f"  Reading Order: {reading_order}")
+                logger.info("Found %s element:", label.upper())
+                logger.debug("  Bounding Box: %s", bbox)
+                logger.debug("  Reading Order: %s", reading_order)
                 
                 # Special handling for table elements
                 if label == "tab":

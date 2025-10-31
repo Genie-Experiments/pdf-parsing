@@ -2,6 +2,10 @@ import os
 import re
 from pathlib import Path
 from utils.get_markdown_file_path import get_markdown_file_path
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
 
 def replace_html_with_markdown(original_html, markdown_text, json_file_path):
     """
@@ -21,7 +25,7 @@ def replace_html_with_markdown(original_html, markdown_text, json_file_path):
         
         # Check if markdown file exists
         if not markdown_file_path.exists():
-            print(f"  ✗ Markdown file not found: {markdown_file_path}")
+            log_error(f"Markdown file not found: {markdown_file_path}")
             return False
         
         # Read the current markdown content
@@ -30,7 +34,7 @@ def replace_html_with_markdown(original_html, markdown_text, json_file_path):
         
         # Check if the original HTML content exists in the file
         if original_html not in content:
-            print(f"  ✗ Original HTML content not found in {markdown_file_path}")
+            log_error(f"Original HTML content not found in {markdown_file_path}")
             return False
         
         # Replace the HTML content with markdown
@@ -40,9 +44,9 @@ def replace_html_with_markdown(original_html, markdown_text, json_file_path):
         with open(markdown_file_path, 'w', encoding='utf-8') as f:
             f.write(updated_content)
         
-        print(f"  ✓ Successfully replaced HTML with markdown in {markdown_file_path}")
+        log_success(f"Successfully replaced HTML with markdown in {markdown_file_path}")
         return True
         
     except Exception as e:
-        print(f"  ✗ Error replacing HTML with markdown: {str(e)}")
+        log_error(f"Error replacing HTML with markdown: {str(e)}")
         return False

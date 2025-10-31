@@ -1,6 +1,7 @@
 from config.config import DATA_DIRECTORY
 from pathlib import Path
 import os
+from utils.logger import get_logger, log_success, log_error
 
 def get_pdf_file_path(json_file_path):
     """
@@ -22,20 +23,22 @@ def get_pdf_file_path(json_file_path):
         else:
             data_dir = Path.cwd() / DATA_DIRECTORY.lstrip('./')
         
+        logger = get_logger(__name__)
+        
         if not data_dir.exists():
-            print(f"  ✗ Data directory not found: {data_dir}")
+            log_error(f"Data directory not found: {data_dir}", logger)
             return None
         
-        print(f"  Searching for PDF: {document_name}.pdf")
+        logger.debug("Searching for PDF: %s.pdf", document_name)
         
         # Search for exact match first
         for pdf_file in data_dir.rglob(f"{document_name}.pdf"):
-            print(f"  ✓ PDF found: {pdf_file}")
+            log_success(f"PDF found: {pdf_file}", logger)
             return str(pdf_file)
         
-        print(f"  ✗ PDF not found in: {data_dir}")
+        logger.warning("PDF not found in: %s", data_dir)
         return None
         
     except Exception as e:
-        print(f"  ✗ Error finding PDF file: {str(e)}")
+        log_error(f"Error finding PDF file: {e}", logger)
         return None

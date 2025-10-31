@@ -7,6 +7,7 @@ in a directory structure before applying post-processing steps.
 
 import os
 import shutil
+from utils.logger import get_logger, log_success, log_error, log_warning
 
 
 def create_markdown_backup(source_dir, backup_suffix="_backup"):
@@ -14,17 +15,19 @@ def create_markdown_backup(source_dir, backup_suffix="_backup"):
     Create backup copies of all markdown files in the same directory with modified filenames.
     
     Args:
-        source_dir (str): Path to the directory containing markdown files
-        backup_suffix (str): Suffix to append to each backup filename (before .md extension)
+        source_dir (str): Directory containing markdown files to backup
+        backup_suffix (str): Suffix to add to backup filenames (default: "_backup")
     
     Returns:
-        int: Number of files backed up, or None if error
+        int: Number of files successfully backed up
     """
-    if not os.path.exists(source_dir):
-        print(f"Warning: Source directory '{source_dir}' does not exist.")
-        return None
+    logger = get_logger(__name__)
     
-    print(f"Creating backup of markdown files in '{source_dir}' with suffix '{backup_suffix}'...")
+    if not os.path.exists(source_dir):
+        log_warning(f"Source directory '{source_dir}' does not exist", logger)
+        return 0
+    
+    logger.info("Creating backup of markdown files in '%s' with suffix '%s'", source_dir, backup_suffix)
     
     # Find all markdown files recursively (excluding existing backup files)
     md_files = []
@@ -34,10 +37,10 @@ def create_markdown_backup(source_dir, backup_suffix="_backup"):
                 md_files.append(os.path.join(root, file))
     
     if not md_files:
-        print(f"No markdown files found in '{source_dir}'. Skipping backup.")
+        logger.info("No markdown files found in '%s'. Skipping backup", source_dir)
         return None
     
-    print(f"Found {len(md_files)} markdown files to backup.")
+    logger.info("Found %d markdown files to backup", len(md_files))
     
     # Create backup files in the same directories
     try:
@@ -55,13 +58,13 @@ def create_markdown_backup(source_dir, backup_suffix="_backup"):
             # Copy the file with new name
             shutil.copy2(md_file, backup_file_path)
             copied_count += 1
-            print(f"  Backed up: {filename} -> {backup_filename}")
+            logger.debug("Backed up: %s -> %s", filename, backup_filename)
         
-        print(f"Successfully backed up {copied_count} markdown files with '{backup_suffix}' suffix")
+        log_success(f"Successfully backed up {copied_count} markdown files with '{backup_suffix}' suffix", logger)
         return copied_count
         
     except Exception as e:
-        print(f"Error creating backup: {str(e)}")
+        log_error(f"Error creating backup: {e}", logger)
         return None
 
 

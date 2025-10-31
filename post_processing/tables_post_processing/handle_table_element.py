@@ -1,27 +1,31 @@
-from convert_html_to_markdown import convert_html_to_markdown
-from replace_html_with_markdown import replace_html_with_markdown
+from post_processing.tables_post_processing.convert_html_to_markdown import convert_html_to_markdown
+from post_processing.tables_post_processing.replace_html_with_markdown import replace_html_with_markdown
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
 
 def handle_table_element(text, json_file_path):
 
-    print(f"  HTML Content :\n{text}")
+    logger.info(f"HTML Content:\n{text}")
                     
     # Convert HTML table to markdown
     markdown_content = convert_html_to_markdown(text, enable_table_plugin=True, verbose=True)
                     
     if markdown_content:
-        print(f"\n  Converted to Markdown:")
-        print(f"  {'-' * 40}")
-        print(markdown_content)
-        print(f"  {'-' * 40}")
+        logger.info("Converted to Markdown:")
+        logger.info("-" * 40)
+        logger.info(markdown_content)
+        logger.info("-" * 40)
                         
         # Replace HTML with markdown in the corresponding markdown file
-        print(f"\n  Replacing HTML with markdown in file...")
+        logger.info("Replacing HTML with markdown in file...")
         success = replace_html_with_markdown(text, markdown_content, json_file_path)
                         
         if success:
-            print(f"  ✓ HTML table successfully replaced with markdown!")
+            log_success("HTML table successfully replaced with markdown!")
         else:
-            print(f"  ✗ Failed to replace HTML with markdown")
+            log_error("Failed to replace HTML with markdown")
     else:
-        print("  Failed to convert HTML to markdown")
+        log_error("Failed to convert HTML to markdown")
   

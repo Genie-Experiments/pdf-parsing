@@ -6,6 +6,10 @@ import sys
 from pathlib import Path
 
 from config.config import HTML_TO_MARKDOWN_DIR
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
 
 
 class HTMLToMarkdownConverter:
@@ -75,33 +79,33 @@ class HTMLToMarkdownConverter:
             
             return True
         except Exception as e:
-            print(f"Warning: Could not set executable permissions: {e}")
+            log_warning(f"Could not set executable permissions: {e}")
             return False
     
     def _validate_setup(self):
         """Validate that the binary exists and is functional"""
         # Check if html-to-markdown directory exists
         if not self.html_to_markdown_dir.exists():
-            print(f"✗ html-to-markdown directory not found")
+            log_error("html-to-markdown directory not found")
             return False
         
         # Check if bin directory exists
         bin_dir = self.html_to_markdown_dir / 'bin'
         if not bin_dir.exists():
-            print(f"✗ bin directory not found at {bin_dir}")
-            print("  Please ensure the pre-compiled binaries are in the bin folder")
+            log_error(f"bin directory not found at {bin_dir}")
+            logger.info("Please ensure the pre-compiled binaries are in the bin folder")
             return False
         
         # Check if the specific binary exists
         if not self.executable_path.exists():
-            print(f"✗ Binary not found at {self.executable_path}")
-            print(f"  Platform: {self.platform}")
-            print(f"  Available files in bin/:")
+            log_error(f"Binary not found at {self.executable_path}")
+            logger.info(f"Platform: {self.platform}")
+            logger.info("Available files in bin/:")
             try:
                 for file in bin_dir.iterdir():
-                    print(f"    - {file.name}")
+                    logger.info(f"  - {file.name}")
             except:
-                print("    (could not list files)")
+                logger.info("  (could not list files)")
             return False
         
         # Ensure executable permissions on Unix systems
@@ -126,17 +130,17 @@ class HTMLToMarkdownConverter:
             if process.returncode == 0 and "test" in process.stdout:
                 return True
             else:
-                print(f"✗ Binary test failed:")
-                print(f"  Return code: {process.returncode}")
-                print(f"  stdout: {process.stdout}")
-                print(f"  stderr: {process.stderr}")
+                log_error("Binary test failed:")
+                logger.info(f"Return code: {process.returncode}")
+                logger.info(f"stdout: {process.stdout}")
+                logger.info(f"stderr: {process.stderr}")
                 return False
                 
         except subprocess.TimeoutExpired:
-            print("✗ Binary test timed out")
+            log_error("Binary test timed out")
             return False
         except Exception as e:
-            print(f"✗ Binary test failed: {e}")
+            log_error(f"Binary test failed: {e}")
             return False
     
     def convert(self, html_content, enable_table_plugin=True, verbose=True):
@@ -152,12 +156,12 @@ class HTMLToMarkdownConverter:
         """
         if verbose:
             env_type = "Google Colab" if self.is_colab else self.platform
-            print(f"Converting HTML to Markdown on {env_type}...")
+            logger.info(f"Converting HTML to Markdown on {env_type}...")
         
         # Validate setup
         if not self._validate_setup():
             if verbose:
-                print("✗ Setup validation failed")
+                log_error("Setup validation failed")
             return None
         
         try:
@@ -167,7 +171,7 @@ class HTMLToMarkdownConverter:
                 cmd.append('--plugin-table')
             
             if verbose:
-                print(f"Running: {self.executable_path.name} {'--plugin-table' if enable_table_plugin else ''}")
+                logger.info(f"Running: {self.executable_path.name} {'--plugin-table' if enable_table_plugin else ''}")
             
             # Run the conversion
             process = subprocess.run(
@@ -179,21 +183,21 @@ class HTMLToMarkdownConverter:
             
             if process.returncode == 0:
                 if verbose:
-                    print("✓ HTML to Markdown conversion successful")
+                    log_success("HTML to Markdown conversion successful")
                 return process.stdout.strip()
             else:
                 if verbose:
-                    print(f"✗ Conversion failed (exit code {process.returncode})")
-                    print(f"Error: {process.stderr}")
+                    log_error(f"Conversion failed (exit code {process.returncode})")
+                    logger.info(f"Error: {process.stderr}")
                 return None
                 
         except subprocess.TimeoutExpired:
             if verbose:
-                print("✗ Conversion timed out after 30 seconds")
+                log_error("Conversion timed out after 30 seconds")
             return None
         except Exception as e:
             if verbose:
-                print(f"✗ Error during conversion: {e}")
+                log_error(f"Error during conversion: {e}")
             return None
     
     def get_info(self):

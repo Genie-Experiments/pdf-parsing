@@ -10,6 +10,11 @@ import os
 import sys
 from pathlib import Path
 
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
+
 
 def extract_text_with_details(pdf_path, output_file):
     """
@@ -50,11 +55,11 @@ def extract_text_with_details(pdf_path, output_file):
                         f.write("-" * 50 + "\n\n")
         
         doc.close()
-        print(f"✓ Extracted text from: {pdf_path}")
+        log_success(f"Extracted text from: {pdf_path}")
         return True
         
     except Exception as e:
-        print(f"✗ Error extracting text from {pdf_path}: {str(e)}")
+        log_error(f"Error extracting text from {pdf_path}: {str(e)}")
         return False
 
 
@@ -122,15 +127,15 @@ def extract_all_pdf_texts(data_directory, raw_pdf_text_dir, force_reextract=Fals
         raw_pdf_text_dir (str): Directory to store extracted text files
         force_reextract (bool): If True, re-extract even if text file already exists
     """
-    print("Starting PDF text extraction pipeline...")
-    print(f"Source directory: {data_directory}")
-    print(f"Output directory: {raw_pdf_text_dir}")
-    print(f"Force re-extraction: {force_reextract}")
-    print("-" * 60)
+    logger.info("Starting PDF text extraction pipeline...")
+    logger.info(f"Source directory: {data_directory}")
+    logger.info(f"Output directory: {raw_pdf_text_dir}")
+    logger.info(f"Force re-extraction: {force_reextract}")
+    logger.info("-" * 60)
     
     # Check if source directory exists
     if not os.path.exists(data_directory):
-        print(f"Error: Source directory '{data_directory}' does not exist!")
+        log_error(f"Source directory '{data_directory}' does not exist!")
         return False
     
     # Create output directory if it doesn't exist
@@ -140,43 +145,41 @@ def extract_all_pdf_texts(data_directory, raw_pdf_text_dir, force_reextract=Fals
     pdf_files = find_pdf_files(data_directory)
     
     if not pdf_files:
-        print(f"No PDF files found in '{data_directory}'")
+        log_warning(f"No PDF files found in '{data_directory}'")
         return True
     
-    print(f"Found {len(pdf_files)} PDF files to process\n")
+    logger.info(f"Found {len(pdf_files)} PDF files to process")
     
     successful_extractions = 0
     failed_extractions = 0
     skipped_extractions = 0
     
     for i, pdf_path in enumerate(pdf_files, 1):
-        print(f"[{i}/{len(pdf_files)}] Processing: {os.path.relpath(pdf_path, data_directory)}")
+        logger.info(f"[{i}/{len(pdf_files)}] Processing: {os.path.relpath(pdf_path, data_directory)}")
         
         # Generate output path maintaining directory structure
         output_path = get_output_path(pdf_path, data_directory, raw_pdf_text_dir)
         
         # Skip if output file already exists (unless force_reextract is True)
         if os.path.exists(output_path) and not force_reextract:
-            print(f"  → Skipping (text file already exists): {os.path.relpath(output_path, raw_pdf_text_dir)}")
+            log_warning(f"Skipping (text file already exists): {os.path.relpath(output_path, raw_pdf_text_dir)}")
             skipped_extractions += 1
             continue
         
         # Extract text
         if extract_text_with_details(pdf_path, output_path):
             successful_extractions += 1
-            print(f"  → Saved to: {os.path.relpath(output_path, raw_pdf_text_dir)}")
+            log_success(f"Saved to: {os.path.relpath(output_path, raw_pdf_text_dir)}")
         else:
             failed_extractions += 1
-        
-        print()  # Empty line for readability
     
     # Print summary
-    print("=" * 60)
-    print("PDF Text Extraction Summary:")
-    print(f"Total PDFs found: {len(pdf_files)}")
-    print(f"Successful extractions: {successful_extractions}")
-    print(f"Skipped extractions: {skipped_extractions}")
-    print(f"Failed extractions: {failed_extractions}")
-    print(f"Output directory: {raw_pdf_text_dir}")
+    logger.info("=" * 60)
+    logger.info("PDF Text Extraction Summary:")
+    logger.info(f"Total PDFs found: {len(pdf_files)}")
+    logger.info(f"Successful extractions: {successful_extractions}")
+    logger.info(f"Skipped extractions: {skipped_extractions}")
+    logger.info(f"Failed extractions: {failed_extractions}")
+    logger.info(f"Output directory: {raw_pdf_text_dir}")
     
     return failed_extractions == 0

@@ -2,6 +2,7 @@ import os
 import glob
 from pathlib import Path
 from post_processing.refine_segments import refine_segments
+from utils.logger import get_logger, log_file_processing, log_processing_stats, log_error
 
 def process_all_json_files(results_directory, segments_to_extract, process_code_using_llm=False, process_figures_using_llm=False):
     """
@@ -11,35 +12,34 @@ def process_all_json_files(results_directory, segments_to_extract, process_code_
         results_directory (str): Path to the results directory containing PDF processing outputs
         segments_to_extract (list): List of segment types to extract (e.g., ["tab", "code", "fig"])
     """
+    logger = get_logger(__name__)
     
     json_files = get_json_files_list(results_directory)
     
     if not json_files:
-        print(f"No JSON files found in {results_directory}")
+        logger.warning("No JSON files found in %s", results_directory)
         return
     
-    print(f"Found {len(json_files)} JSON files to process")
-    print(f"Extracting segments: {segments_to_extract}")
-    print("=" * 60)
+    logger.info("Found %d JSON files to process", len(json_files))
+    logger.info("Extracting segments: %s", segments_to_extract)
+    
+    processed = 0
+    failed = 0
     
     # Process each JSON file
     for json_file in json_files:
         try:
-            # Get the relative path for cleaner output
-            relative_path = os.path.relpath(json_file)
-            print(f"\n\n{'='*60}")
-            print(f"PROCESSING: {relative_path}")
-            print(f"{'='*60}")
+            log_file_processing(json_file, logger)
             
             # Extract segments from this JSON file
             refine_segments(json_file, segments_to_extract, process_code_using_llm, process_figures_using_llm)
+            processed += 1
             
         except Exception as e:
-            print(f"✗ Error processing {json_file}: {str(e)}")
+            log_error(f"Error processing {json_file}: {e}", logger)
+            failed += 1
     
-    print(f"\n\n{'='*60}")
-    print("JSON processing completed!")
-    print(f"{'='*60}")
+    log_processing_stats(len(json_files), processed, failed, logger)
 
 
 def get_json_files_list(results_directory):

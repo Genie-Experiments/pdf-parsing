@@ -2,6 +2,11 @@ import json
 import re
 from typing import Dict, List
 
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
+
 
 def load_json_hierarchy(json_file: str) -> Dict:
     """Load the JSON file containing section hierarchy."""
@@ -79,11 +84,11 @@ def fix_markdown_sections(markdown_file: str, json_file: str, output_file: str =
                 
                 # Debug output
                 if len(new_hashes) != len(current_hashes):
-                    print(f"Fixed: '{heading_text}' (Level {len(current_hashes)} → {correct_level})")
+                    logger.info(f"Fixed: '{heading_text}' (Level {len(current_hashes)} → {correct_level})")
             else:
                 # Keep original if not found in hierarchy
                 fixed_lines.append(line)
-                print(f"No match found for: '{heading_text}' (keeping original)")
+                log_warning(f"No match found for: '{heading_text}' (keeping original)")
         else:
             # Not a heading, keep as is
             fixed_lines.append(line)
@@ -102,13 +107,13 @@ def fix_markdown_sections(markdown_file: str, json_file: str, output_file: str =
         f.writelines(fixed_lines)
     
     action = "updated in place" if in_place else f"written to: {output_path}"
-    print(f"\n{'='*60}")
-    print(f"Fixed markdown {action}")
-    print(f"Total sections in hierarchy: {len(section_to_level)}")
-    print(f"Total headings processed: {total_headings}")
-    print(f"Headings fixed: {fixed_headings}")
-    print(f"Match rate: {(fixed_headings/total_headings*100):.1f}%")
-    print(f"{'='*60}")
+    logger.info("="*60)
+    log_success(f"Fixed markdown {action}")
+    logger.info(f"Total sections in hierarchy: {len(section_to_level)}")
+    logger.info(f"Total headings processed: {total_headings}")
+    logger.info(f"Headings fixed: {fixed_headings}")
+    logger.info(f"Match rate: {(fixed_headings/total_headings*100):.1f}%")
+    logger.info("="*60)
 
 
 def fix_markdown_headings(markdown_file: str, json_file: str, output_file: str = None):
@@ -130,20 +135,20 @@ def batch_fix_markdown_sections(toc_json_dir: str, results_dir: str):
     import os
     from pathlib import Path
     
-    print(f"Starting batch processing of markdown section hierarchy (Simple Mode)...")
-    print(f"TOC JSON directory: {toc_json_dir}")
-    print(f"Results directory: {results_dir}")
-    print(f"{'='*80}")
+    logger.info("Starting batch processing of markdown section hierarchy (Simple Mode)...")
+    logger.info(f"TOC JSON directory: {toc_json_dir}")
+    logger.info(f"Results directory: {results_dir}")
+    logger.info("="*80)
     
     # Find all JSON files (hierarchy files)
     toc_json_path = Path(toc_json_dir)
     json_files = list(toc_json_path.rglob("*.json"))
     
     if not json_files:
-        print(f"No JSON files found in {toc_json_dir}")
+        log_warning(f"No JSON files found in {toc_json_dir}")
         return
     
-    print(f"Found {len(json_files)} JSON hierarchy files")
+    logger.info(f"Found {len(json_files)} JSON hierarchy files")
     
     # Statistics
     total_processed = 0
@@ -156,32 +161,32 @@ def batch_fix_markdown_sections(toc_json_dir: str, results_dir: str):
             # Extract the base filename (without .json extension)
             base_filename = json_file.stem
             
-            print(f"\n{'-'*60}")
-            print(f"Processing: {json_file.name}")
-            print(f"Looking for markdown file: {base_filename}.md")
+            logger.info("-"*60)
+            logger.info(f"Processing: {json_file.name}")
+            logger.info(f"Looking for markdown file: {base_filename}.md")
             
             # Find corresponding markdown file in Results directory
             results_path = Path(results_dir)
             markdown_files = list(results_path.rglob(f"{base_filename}.md"))
             
             if not markdown_files:
-                print(f"  ✗ No matching markdown file found for {base_filename}.md")
+                log_error(f"No matching markdown file found for {base_filename}.md")
                 continue
             
             if len(markdown_files) > 1:
-                print(f"  ! Multiple markdown files found:")
+                log_warning("Multiple markdown files found:")
                 for mf in markdown_files:
-                    print(f"    - {mf}")
-                print(f"  Using first match: {markdown_files[0]}")
+                    logger.info(f"  - {mf}")
+                logger.info(f"Using first match: {markdown_files[0]}")
             
             markdown_file = markdown_files[0]
-            print(f"  ✓ Found markdown file: {markdown_file}")
+            log_success(f"Found markdown file: {markdown_file}")
             
             # Process the file pair
             total_matched += 1
-            print(f"\n  Processing file pair:")
-            print(f"    JSON: {json_file}")
-            print(f"    MD:   {markdown_file}")
+            logger.info("Processing file pair:")
+            logger.info(f"  JSON: {json_file}")
+            logger.info(f"  MD:   {markdown_file}")
             
             # Fix markdown sections in place using simple matching
             fix_markdown_sections(
@@ -191,22 +196,22 @@ def batch_fix_markdown_sections(toc_json_dir: str, results_dir: str):
             )
             
             total_processed += 1
-            print(f"  ✓ Successfully processed {markdown_file.name}")
+            log_success(f"Successfully processed {markdown_file.name}")
             
         except Exception as e:
             total_errors += 1
-            print(f"  ✗ Error processing {json_file.name}: {str(e)}")
+            log_error(f"Error processing {json_file.name}: {str(e)}")
     
     # Final statistics
-    print(f"\n{'='*80}")
-    print(f"BATCH PROCESSING COMPLETED (Simple Mode)")
-    print(f"{'='*80}")
-    print(f"Total JSON hierarchy files found: {len(json_files)}")
-    print(f"Matching markdown files found: {total_matched}")
-    print(f"Successfully processed: {total_processed}")
-    print(f"Errors encountered: {total_errors}")
-    print(f"Success rate: {(total_processed/len(json_files)*100):.1f}%")
-    print(f"{'='*80}")
+    logger.info("="*80)
+    logger.info("BATCH PROCESSING COMPLETED (Simple Mode)")
+    logger.info("="*80)
+    logger.info(f"Total JSON hierarchy files found: {len(json_files)}")
+    logger.info(f"Matching markdown files found: {total_matched}")
+    logger.info(f"Successfully processed: {total_processed}")
+    logger.info(f"Errors encountered: {total_errors}")
+    logger.info(f"Success rate: {(total_processed/len(json_files)*100):.1f}%")
+    logger.info("="*80)
     
     return {
         'total_json_files': len(json_files),

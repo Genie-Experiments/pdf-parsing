@@ -4,6 +4,11 @@ import subprocess
 from pathlib import Path
 import sys
 
+from utils.logger import get_logger, log_success, log_error, log_warning
+
+# Configure logging
+logger = get_logger(__name__)
+
 def process_pdf_files(data_dir, results_dir, dolphin_script, model_path):
     """
     Process all PDF files recursively in the data directory using Dolphin model.
@@ -27,10 +32,10 @@ def process_pdf_files(data_dir, results_dir, dolphin_script, model_path):
     pdf_files = list(data_path.rglob("*.pdf"))
     
     if not pdf_files:
-        print(f"No PDF files found in {data_dir}")
+        log_warning(f"No PDF files found in {data_dir}")
         return
     
-    print(f"Found {len(pdf_files)} PDF files to process")
+    logger.info(f"Found {len(pdf_files)} PDF files to process")
     
     # Process each PDF file
     for pdf_file in pdf_files:
@@ -42,7 +47,7 @@ def process_pdf_files(data_dir, results_dir, dolphin_script, model_path):
             relative_path = pdf_file.relative_to(data_path)
             relative_dir = relative_path.parent
             
-            print(f"\nProcessing: {relative_path}")
+            logger.info(f"Processing: {relative_path}")
             
             # Create output directory maintaining the same structure
             # Structure: results_dir/relative_dir/pdf_name/
@@ -58,21 +63,21 @@ def process_pdf_files(data_dir, results_dir, dolphin_script, model_path):
                 "--save_dir", str(output_dir)
             ]
             
-            print(f"Running command: {' '.join(cmd)}")
-            print(f"Output directory: {output_dir}")
+            logger.info(f"Running command: {' '.join(cmd)}")
+            logger.info(f"Output directory: {output_dir}")
             
             # Execute the command
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=".")
             
             if result.returncode == 0:
-                print(f"✓ Successfully processed {pdf_name}")
+                log_success(f"Successfully processed {pdf_name}")
                 if result.stdout:
-                    print(f"Output: {result.stdout}")
+                    logger.info(f"Output: {result.stdout}")
             else:
-                print(f"✗ Error processing {pdf_name}")
-                print(f"Error: {result.stderr}")
+                log_error(f"Error processing {pdf_name}")
+                logger.info(f"Error: {result.stderr}")
                 
         except Exception as e:
-            print(f"✗ Exception while processing {pdf_file}: {str(e)}")
+            log_error(f"Exception while processing {pdf_file}: {str(e)}")
     
-    print("\nPDF processing pipeline completed!")
+    log_success("PDF processing pipeline completed!")

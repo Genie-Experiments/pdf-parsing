@@ -32,3 +32,6 @@ ground_truth.md
 
 .venv
 temp_data
+
+logs
+.github

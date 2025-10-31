@@ -9,18 +9,15 @@ code extraction and formatting.
 import os
 import json
 import base64
-import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 import openai
 from dotenv import load_dotenv
 import io
+from utils.logger import get_logger, log_success, log_error, log_warning
 
 # Load environment variables
 load_dotenv()
-
-# Configure logging
-logger = logging.getLogger(__name__)
 
 # Constants
 VISION_MODEL = "gpt-4o"
@@ -35,6 +32,7 @@ class LLMCodeProcessor:
     
     def __init__(self):
         """Initialize the LLMCodeProcessor with API configuration."""
+        self.logger = get_logger(__name__)
         self.openai_client = None
         self._initialize_openai_client()
     
@@ -44,12 +42,12 @@ class LLMCodeProcessor:
         if api_key:
             try:
                 self.openai_client = openai.OpenAI(api_key=api_key)
-                logger.info("OpenAI client initialized successfully for code processing")
+                log_success("OpenAI client initialized successfully for code processing", self.logger)
             except Exception as e:
-                logger.error(f"Failed to initialize OpenAI client: {e}")
+                log_error(f"Failed to initialize OpenAI client: {e}", self.logger)
                 self.openai_client = None
         else:
-            logger.warning("OpenAI API key not found in environment variables")
+            log_warning("OpenAI API key not found in environment variables", self.logger)
     
     def process_code_with_llm(
         self, 
@@ -68,42 +66,47 @@ class LLMCodeProcessor:
         """
         try:
             if not self.openai_client:
-                logger.warning("OpenAI client not available, falling back to text-based processing")
+                log_warning("OpenAI client not available, falling back to text-based processing", self.logger)
                 return None
             
             # Get PDF file name and page information
+            self.logger.info("Starting LLM-based code processing")
             pdf_name = self._extract_pdf_name(json_file_path)
             page_number = self._get_page_number_from_context(element, json_file_path)
             
             if not pdf_name or not page_number:
-                logger.error("Could not determine PDF name or page number")
+                log_error("Could not determine PDF name or page number", self.logger)
                 return None
+            
+            self.logger.debug("Processing code for PDF: %s, page: %d", pdf_name, page_number)
             
             # Find the page image
             page_image_path = self._find_page_image(pdf_name, page_number)
             if not page_image_path:
-                logger.error(f"Could not find page image for {pdf_name}, page {page_number}")
+                log_error(f"Could not find page image for {pdf_name}, page {page_number}", self.logger)
                 return None
             
             # Crop the code section from the image using padded_bbox for better accuracy
             bbox_to_use = element.get("padded_bbox") or element.get("bbox", [])
+            self.logger.debug("Using %s for cropping", "padded_bbox" if element.get("padded_bbox") else "bbox")
             cropped_image = self._crop_code_section(page_image_path, bbox_to_use)
             if not cropped_image:
-                logger.error("Failed to crop code section from image")
+                log_error("Failed to crop code section from image", self.logger)
                 return None
             
             # Send to OpenAI Vision API
             extracted_code = self._extract_code_with_vision_api(cropped_image)
             
             if extracted_code:
-                logger.info("Successfully extracted code using LLM vision")
+                log_success("Successfully extracted code using LLM vision", self.logger)
+                self.logger.debug("Extracted code length: %d characters", len(extracted_code))
                 return extracted_code
             else:
-                logger.warning("Failed to extract code using LLM vision")
+                log_warning("Failed to extract code using LLM vision", self.logger)
                 return None
                 
         except Exception as e:
-            logger.error(f"Error processing code with LLM: {e}")
+            log_error(f"Error processing code with LLM: {e}", self.logger)
             return None
     
     def _extract_pdf_name(self, json_file_path: str) -> Optional[str]:
@@ -121,7 +124,7 @@ class LLMCodeProcessor:
             return json_path.stem
             
         except Exception as e:
-            logger.error(f"Error extracting PDF name: {e}")
+            log_error(f"Error extracting PDF name: {e}", self.logger)
             return None
     
     def _get_page_number_from_context(self, element: Dict[str, Any], json_file_path: str) -> Optional[int]:
@@ -137,11 +140,11 @@ class LLMCodeProcessor:
                         page_element.get("reading_order") == element.get("reading_order")):
                         return page.get("page_number")
             
-            logger.error("Could not find page number for element")
+            log_error("Could not find page number for element", self.logger)
             return None
             
         except Exception as e:
-            logger.error(f"Error getting page number: {e}")
+            log_error(f"Error getting page number: {e}", self.logger)
             return None
     
     def _find_page_image(self, pdf_name: str, page_number: int) -> Optional[Path]:
@@ -161,25 +164,27 @@ class LLMCodeProcessor:
             for filename in possible_filenames:
                 image_path = images_dir / filename
                 if image_path.exists():
-                    logger.info(f"Found page image: {image_path}")
+                    log_success(f"Found page image: {image_path}", self.logger)
                     return image_path
             
-            logger.error(f"No page image found for {pdf_name}, page {page_number}")
-            logger.info(f"Searched in: {images_dir}")
-            logger.info(f"Tried filenames: {possible_filenames}")
+            log_error(f"No page image found for {pdf_name}, page {page_number}", self.logger)
+            self.logger.debug("Searched in: %s", images_dir)
+            self.logger.debug("Tried filenames: %s", possible_filenames)
             
             return None
             
         except Exception as e:
-            logger.error(f"Error finding page image: {e}")
+            log_error(f"Error finding page image: {e}", self.logger)
             return None
     
     def _crop_code_section(self, image_path: Path, bbox: List[float]) -> Optional[bytes]:
         """Crop the code section from the page image based on bounding box."""
         try:
             if not bbox or len(bbox) != 4:
-                logger.error("Invalid bounding box provided")
+                log_error("Invalid bounding box provided", self.logger)
                 return None
+            
+            self.logger.debug("Cropping image with bbox: %s", bbox)
             
             # Use OpenCV cropping for high quality results
             from utils.image_cropping import crop_image_opencv
@@ -191,21 +196,24 @@ class LLMCodeProcessor:
             )
             
             if result:
-                logger.info(f"Successfully cropped code section: {len(result)} bytes")
+                log_success(f"Successfully cropped code section: {len(result)} bytes", self.logger)
                 return result
             else:
-                logger.error("All cropping methods failed")
+                log_error("All cropping methods failed", self.logger)
                 return None
                 
         except Exception as e:
-            logger.error(f"Error cropping code section: {e}")
+            log_error(f"Error cropping code section: {e}", self.logger)
             return None
     
     def _extract_code_with_vision_api(self, image_bytes: bytes) -> Optional[str]:
         """Extract code from cropped image using OpenAI Vision API."""
         try:
+            self.logger.info("Preparing image for Vision API processing")
+            
             # Encode image to base64
             base64_image = base64.b64encode(image_bytes).decode('utf-8')
+            self.logger.debug("Image encoded to base64: %d characters", len(base64_image))
             
             # Prepare the prompt
             system_prompt = """You are a code extraction expert. Your task is to analyze the provided image and extract any code, configuration, or commands that you see.
@@ -220,6 +228,8 @@ Instructions:
 7. If no code is visible, respond with "No code found in image"
 
 Return only the extracted code without any additional text or explanations."""
+            
+            self.logger.info("Calling OpenAI Vision API for code extraction")
             
             # Make API call
             response = self.openai_client.chat.completions.create(
@@ -252,14 +262,15 @@ Return only the extracted code without any additional text or explanations."""
             extracted_code = response.choices[0].message.content.strip()
             
             if extracted_code and extracted_code != "No code found in image":
-                logger.info("Successfully extracted code using Vision API")
+                log_success("Successfully extracted code using Vision API", self.logger)
+                self.logger.debug("Vision API response length: %d characters", len(extracted_code))
                 return extracted_code
             else:
-                logger.warning("No code found in image by Vision API")
+                log_warning("No code found in image by Vision API", self.logger)
                 return None
                 
         except Exception as e:
-            logger.error(f"Error calling OpenAI Vision API: {e}")
+            log_error(f"Error calling OpenAI Vision API: {e}", self.logger)
             return None
 
 
