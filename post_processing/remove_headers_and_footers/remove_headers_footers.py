@@ -24,7 +24,7 @@ def load_json_data(json_file):
         sys.exit(1)
 
 def extract_headers_footers(json_data):
-    """Extract header and footer text for each page from JSON data (supports nested 'elements' list)"""
+    """Extract header, footer, and watermark text for each page from JSON data (supports nested 'elements' list)"""
     headers_footers = {}
 
     # The JSON has a 'pages' key containing a list of pages
@@ -35,7 +35,7 @@ def extract_headers_footers(json_data):
             continue
 
         page_num = page_data["page_number"]
-        headers_footers[page_num] = {"headers": [], "footers": []}
+        headers_footers[page_num] = {"headers": [], "footers": [], "watermarks": []}
 
         elements = page_data.get("elements", [])
         for element in elements:
@@ -52,6 +52,8 @@ def extract_headers_footers(json_data):
                 headers_footers[page_num]["headers"].append(text)
             elif "foot" in label:
                 headers_footers[page_num]["footers"].append(text)
+            elif "watermark" in label:
+                headers_footers[page_num]["watermarks"].append(text)
 
     return headers_footers
 
@@ -83,32 +85,66 @@ def get_page_content(markdown_content, page_num):
             return ""
 
 def remove_text_from_content(content, text_to_remove):
-    """Remove specific header/footer text from content, but preserve it when it's part of a Markdown heading."""
+    """Remove specific header/footer/watermark text from content, but preserve it when it's part of a Markdown heading."""
     if not text_to_remove or not content:
         return content
 
-    # Process line by line for exact matching
+    # Normalize the text to remove
+    normalized_text_to_remove = normalize_text_for_comparison(text_to_remove)
+    
+    # Process line by line and also check for paragraph matches
     lines = content.split('\n')
     updated_lines = []
+    i = 0
     
-    for line in lines:
+    while i < len(lines):
+        line = lines[i]
+        
         # Check if this line is a markdown heading that contains our text
         is_heading_with_text = (
             re.match(r'^\s*#+\s+', line) and 
-            text_to_remove.lower() in line.lower()
+            normalized_text_to_remove in normalize_text_for_comparison(line)
         )
         
         if is_heading_with_text:
             # Keep the line as-is (it's a heading)
             updated_lines.append(line)
+            i += 1
         else:
-            # Check if this line contains EXACTLY the header/footer text (case-insensitive)
-            if line.strip().lower() == text_to_remove.lower():
+            # Check for exact line match first
+            normalized_line = normalize_text_for_comparison(line)
+            if normalized_line == normalized_text_to_remove:
                 # Skip this line (remove the exact match)
-                continue
+                i += 1
             else:
-                # Keep all other lines unchanged
-                updated_lines.append(line)
+                # Check if this line is the start of a multi-line text that matches
+                if normalized_line and normalized_text_to_remove.startswith(normalized_line):
+                    # Try to match multiple consecutive lines
+                    potential_match_lines = [line]
+                    j = i + 1
+                    combined_text = normalized_line
+                    
+                    while j < len(lines) and len(combined_text) < len(normalized_text_to_remove):
+                        next_line = lines[j]
+                        normalized_next_line = normalize_text_for_comparison(next_line)
+                        if normalized_next_line:  # Skip empty lines
+                            combined_text += ' ' + normalized_next_line
+                            potential_match_lines.append(next_line)
+                            
+                            # Check if we have a complete match
+                            if combined_text == normalized_text_to_remove:
+                                # Found a match! Skip all these lines
+                                i = j + 1
+                                break
+                        j += 1
+                    else:
+                        # No match found, keep the original line
+                        updated_lines.append(line)
+                        i += 1
+                else:
+                    # Keep all other lines unchanged
+                    updated_lines.append(line)
+                    i += 1
     
     # Join lines and clean up excessive blank lines
     result = '\n'.join(updated_lines)
@@ -116,6 +152,21 @@ def remove_text_from_content(content, text_to_remove):
     
     return result.strip()
 
+
+def normalize_text_for_comparison(text):
+    """Normalize text for comparison by handling common character variations."""
+    # Replace common character variations
+    text = text.replace('\u2013', '-')  # en-dash to hyphen
+    text = text.replace('\u2014', '-')  # em-dash to hyphen
+    text = text.replace('\u2018', "'")  # left single quotation mark
+    text = text.replace('\u2019', "'")  # right single quotation mark
+    text = text.replace('\u201C', '"')  # left double quotation mark
+    text = text.replace('\u201D', '"')  # right double quotation mark
+    
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text.strip())
+    
+    return text.lower()
 
 def update_page_content(markdown_content, page_num, updated_page_content):
     """Update the content for a specific page in the markdown"""
@@ -175,15 +226,11 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
     updated_content = markdown_content
     
     for page_num in sorted(headers_footers.keys()):
-        # Skip header/footer removal for the first page
-        if page_num == 1:
-            logger.info("Skipping header/footer removal for page 1")
-            continue
-
         page_headers = headers_footers[page_num]['headers']
         page_footers = headers_footers[page_num]['footers']
+        page_watermarks = headers_footers[page_num]['watermarks']
 
-        if not page_headers and not page_footers:
+        if not page_headers and not page_footers and not page_watermarks:
             continue
         
         # Get current page content
@@ -194,26 +241,51 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
             continue
         
         original_page_content = page_content
-        removals_on_page = 0
+        changes_on_page = 0
         
-        # Remove headers
-        for header_text in page_headers:
-            if header_text in page_content:
-                page_content = remove_text_from_content(page_content, header_text)
-                removals_on_page += 1
-                logger.info(f"Removed header from page {page_num}: '{header_text[:50]}...'")
+        if page_num == 1:
+            # For page 1, keep headers but remove footers entirely
+            logger.info("Processing page 1: keeping headers, removing footers")
+            
+            # Keep headers unchanged (do nothing with them)
+            
+            # Remove footers
+            for footer_text in page_footers:
+                new_page_content = remove_text_from_content(page_content, footer_text)
+                if new_page_content != page_content:
+                    page_content = new_page_content
+                    changes_on_page += 1
+                    logger.info(f"Removed footer from page {page_num}: '{footer_text[:50]}...'")
+        else:
+            # For other pages, remove headers and footers as before
+            # Remove headers
+            for header_text in page_headers:
+                new_page_content = remove_text_from_content(page_content, header_text)
+                if new_page_content != page_content:
+                    page_content = new_page_content
+                    changes_on_page += 1
+                    logger.info(f"Removed header from page {page_num}: '{header_text[:50]}...'")
+            
+            # Remove footers
+            for footer_text in page_footers:
+                new_page_content = remove_text_from_content(page_content, footer_text)
+                if new_page_content != page_content:
+                    page_content = new_page_content
+                    changes_on_page += 1
+                    logger.info(f"Removed footer from page {page_num}: '{footer_text[:50]}...'")
         
-        # Remove footers
-        for footer_text in page_footers:
-            if footer_text in page_content:
-                page_content = remove_text_from_content(page_content, footer_text)
-                removals_on_page += 1
-                logger.info(f"Removed footer from page {page_num}: '{footer_text[:50]}...'")
+        # Remove watermarks for all pages
+        for watermark_text in page_watermarks:
+            new_page_content = remove_text_from_content(page_content, watermark_text)
+            if new_page_content != page_content:
+                page_content = new_page_content
+                changes_on_page += 1
+                logger.info(f"Removed watermark from page {page_num}: '{watermark_text[:50]}...')")
         
         # Update the markdown content if changes were made
-        if removals_on_page > 0:
+        if changes_on_page > 0:
             updated_content = update_page_content(updated_content, page_num, page_content)
-            total_removals += removals_on_page
+            total_removals += changes_on_page
     
     # Determine output file
     if output_file is None:
@@ -225,7 +297,7 @@ def remove_headers_footers(markdown_file, json_file, output_file=None):
             file.write(updated_content)
         
         log_success(f"Successfully processed '{markdown_file}'")
-        logger.info(f"Total headers/footers removed: {total_removals}")
+        logger.info(f"Total headers/footers processed: {total_removals}")
         if output_file != markdown_file:
             logger.info(f"Output written to '{output_file}'")
         else:
@@ -306,14 +378,11 @@ def remove_headers_footers_batch(results_directory: str):
                 updated_content = markdown_content
                 
                 for page_num in sorted(headers_footers.keys()):
-                    # Skip header/footer removal for the first page
-                    if page_num == 1:
-                        continue
-
                     page_headers = headers_footers[page_num]['headers']
                     page_footers = headers_footers[page_num]['footers']
+                    page_watermarks = headers_footers[page_num]['watermarks']
 
-                    if not page_headers and not page_footers:
+                    if not page_headers and not page_footers and not page_watermarks:
                         continue
                     
                     # Get current page content
@@ -323,31 +392,52 @@ def remove_headers_footers_batch(results_directory: str):
                         continue
                     
                     original_page_content = page_content
-                    removals_on_page = 0
+                    changes_on_page = 0
                     
-                    # Remove headers
-                    for header_text in page_headers:
-                        if header_text in page_content:
-                            page_content = remove_text_from_content(page_content, header_text)
-                            removals_on_page += 1
+                    if page_num == 1:
+                        # For page 1, keep headers but remove footers entirely
+                        # Keep headers unchanged (do nothing with them)
+                        
+                        # Remove footers
+                        for footer_text in page_footers:
+                            new_page_content = remove_text_from_content(page_content, footer_text)
+                            if new_page_content != page_content:
+                                page_content = new_page_content
+                                changes_on_page += 1
+                    else:
+                        # For other pages, remove headers and footers as before
+                        # Remove headers
+                        for header_text in page_headers:
+                            new_page_content = remove_text_from_content(page_content, header_text)
+                            if new_page_content != page_content:
+                                page_content = new_page_content
+                                changes_on_page += 1
+                        
+                        # Remove footers
+                        for footer_text in page_footers:
+                            new_page_content = remove_text_from_content(page_content, footer_text)
+                            if new_page_content != page_content:
+                                page_content = new_page_content
+                                changes_on_page += 1
                     
-                    # Remove footers
-                    for footer_text in page_footers:
-                        if footer_text in page_content:
-                            page_content = remove_text_from_content(page_content, footer_text)
-                            removals_on_page += 1
+                    # Remove watermarks for all pages
+                    for watermark_text in page_watermarks:
+                        new_page_content = remove_text_from_content(page_content, watermark_text)
+                        if new_page_content != page_content:
+                            page_content = new_page_content
+                            changes_on_page += 1
                     
                     # Update the markdown content if changes were made
-                    if removals_on_page > 0:
+                    if changes_on_page > 0:
                         updated_content = update_page_content(updated_content, page_num, page_content)
-                        total_removals += removals_on_page
+                        total_removals += changes_on_page
                 
                 # Write updated content
                 with open(markdown_path, 'w', encoding='utf-8') as file:
                     file.write(updated_content)
                 
                 successful_removals += 1
-                log_success(f"Removed {total_removals} headers/footers")
+                log_success(f"Processed {total_removals} headers/footers")
                 
             except Exception as e:
                 failed_removals += 1
@@ -367,45 +457,3 @@ def remove_headers_footers_batch(results_directory: str):
     logger.info(f"Failed removals: {failed_removals}")
     
     return failed_removals == 0
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Remove PDF page headers and footers from markdown file using JSON data"
-    )
-    parser.add_argument(
-        'markdown_file', 
-        help='Path to the input markdown file'
-    )
-    parser.add_argument(
-        'json_file', 
-        help='Path to the JSON file containing page structure data'
-    )
-    parser.add_argument(
-        '-o', '--output', 
-        help='Path to the output file (optional, defaults to input file)'
-    )
-    
-    args = parser.parse_args()
-    
-    remove_headers_footers(args.markdown_file, args.json_file, args.output)
-
-
-if __name__ == "__main__":
-    # Check if running with command line arguments or as batch processor
-    if len(sys.argv) == 1:
-        # No arguments provided - run as batch processor with config
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'config'))
-        from config import OUTPUT_DIRECTORY
-        
-        success = remove_headers_footers_batch(OUTPUT_DIRECTORY)
-        
-        if success:
-            log_success("Header/footer removal completed successfully!")
-        else:
-            log_error("Header/footer removal failed!")
-        
-        sys.exit(0 if success else 1)
-    else:
-        # Command line arguments provided - run original functionality
-        main()
