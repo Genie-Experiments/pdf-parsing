@@ -5,11 +5,14 @@ import stat
 import sys
 from pathlib import Path
 
-from config.config import HTML_TO_MARKDOWN_DIR
+from config.config import settings
 from utils.logger import get_logger, log_success, log_error, log_warning
 
 # Configure logging
 logger = get_logger(__name__)
+
+# HTML to Markdown directory
+HTML_TO_MARKDOWN_DIR = settings.html_to_markdown_dir
 
 
 class HTMLToMarkdownConverter:

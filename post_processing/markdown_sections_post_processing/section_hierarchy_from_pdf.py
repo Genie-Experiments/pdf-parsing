@@ -6,7 +6,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from config.config import DATA_DIRECTORY
+# from config.config import DATA_DIRECTORY
 from utils.logger import get_logger, log_success, log_error, log_warning
 
 # Configure logging
@@ -479,8 +479,6 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
     Returns:
         Dictionary with processing statistics
     """
-    if data_directory is None:
-        data_directory = DATA_DIRECTORY
     
     logger.info(f"Starting batch processing of PDFs from: {data_directory}")
     logger.info(f"Output directory: {output_base_dir}")

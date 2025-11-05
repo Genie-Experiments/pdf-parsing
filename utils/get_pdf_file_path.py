@@ -1,7 +1,9 @@
-from config.config import DATA_DIRECTORY
+from config.config import settings
 from pathlib import Path
 import os
 from utils.logger import get_logger, log_success, log_error
+
+DATA_DIRECTORY = settings.data_directory
 
 def get_pdf_file_path(json_file_path):
     """
