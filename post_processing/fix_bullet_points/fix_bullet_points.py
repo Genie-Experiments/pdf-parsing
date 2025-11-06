@@ -7,7 +7,9 @@ This script fixes inconsistent bullet point formatting by:
 3. Converting lines that start with "- number." to just "number." (numbered lists)
 4. Converting lines that start with just "•" to "-"
 5. Converting lines that start with just "◦" to "-"
-6. Preserving proper indentation levels for nested bullets
+6. Converting lines that start with "- number " (without dot) to "number." (numbered lists)
+7. Converting lines that start with just "number " (without dash or dot) to "number." (numbered lists)
+8. Preserving proper indentation levels for nested bullets
 """
 
 import os
@@ -77,6 +79,26 @@ def fix_bullet_points_in_text(content: str) -> tuple[str, int]:
                             content_text = pattern5.group(2)
                             line = f"{indentation}- {content_text}"
                             fixes_count += 1
+                        else:
+                            # Pattern 6: Lines starting with "- number " (without dot after number)
+                            # Replace with "number. " (preserving indentation)
+                            pattern6 = re.match(r'^(\s*)-\s*(\d+)\s+(.*)', line)
+                            if pattern6:
+                                indentation = pattern6.group(1)
+                                number = pattern6.group(2)
+                                content_text = pattern6.group(3)
+                                line = f"{indentation}{number}. {content_text}"
+                                fixes_count += 1
+                            else:
+                                # Pattern 7: Lines starting with just "number " (without dash or dot)
+                                # Replace with "number. " (preserving indentation)
+                                pattern7 = re.match(r'^(\s*)(\d+)\s+(.*)', line)
+                                if pattern7:
+                                    indentation = pattern7.group(1)
+                                    number = pattern7.group(2)
+                                    content_text = pattern7.group(3)
+                                    line = f"{indentation}{number}. {content_text}"
+                                    fixes_count += 1
         
         fixed_lines.append(line)
     
