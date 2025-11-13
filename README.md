@@ -51,27 +51,44 @@ huggingface-cli download ByteDance/Dolphin-1.5 --local-dir ./hf_model
 cd ..
 ```
 
-### 6. Configure Settings
+### 6. Configure Environment Variables
 
-Set the directory paths and settings in the config file: `pdf-parsing/config/config.py`
+create a `.env` file in the project's root directory and copy the below content in the `.env` file then adjust the settings accordingly:
 
-Required configuration options:
-- `DATA_DIRECTORY`: Directory containing PDF files to process
-- `OUTPUT_DIRECTORY`: Directory for output results
-- `PROCESSED_IMAGES_DIR`: Directory to save processed images by Dolphin
-- `RAW_PDF_TEXT_DIR`: Directory to store raw extracted PDF texts
-- `HIERARCHY_JSON_DIRECTORY`: Directory to store pdf's section hierarchy
-- `PROCESS_CODE_USING_LLM`: Enable LLM-based code processing (requires OpenAI API key)
-- `PROCESS_FIGURES_USING_LLM`: Enable LLM-based figure processing (requires OpenAI API key)
-- `SEGMENTS_TO_REFINE`: Types of segments to refine (supported: "code", "fig", "tab")
+```
 
-### 7. Configure Environment Variables (Optional)
+#### .env File Structure
 
-For LLM-based processing, create a `.env` file:
+```env
+# Directory paths
+DATA_DIRECTORY=./data # Directory where your PDFs are stored
+OUTPUT_DIRECTORY=./results # Directory for storing output results
+PROCESSED_IMAGES_DIR=./processed_images_by_dolphin # Directory for storing processed images by dolphin
+RAW_PDF_TEXT_DIR=./raw_pdf_text # Directory for storing raw PDF text
+HIERARCHY_JSON_DIRECTORY=./section_hierarchy_pdfs # Directory for storing section hierarchy JSON files
 
-```bash
-cp .env.example .env
-# Edit .env and add your OpenAI API key
+# !! Important: Internal paths: Do not change these values !!
+DOLPHIN_SCRIPT=./Dolphin/demo_page.py
+MODEL_PATH=./Dolphin/hf_model
+HTML_TO_MARKDOWN_DIR=./html-to-markdown
+
+# Processing flags
+PROCESS_CODE_USING_LLM=false # Whether to use LLM for code segments refinement
+PROCESS_FIGURES_USING_LLM=false # Whether to use LLM for generating figures description
+SEGMENTS_TO_REFINE=["code","fig","tab"] 
+# Comma-separated list of segment types to refine: Supported: code, fig, tab. By refinement we mean that for tables, html code will be converted to clean markdown. For code, existing code segments in markdown will be replaced with well formatted code segments. For figures, if PROCESS_FIGURES_USING_LLM=True the figures will be sent to LLM for description generation. 
+
+# OpenAI models
+#OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL_VISION=gpt-4o-mini # Model for code segments refinement
+OPENAI_MODEL_TEXT=gpt-4o-mini # Model for generating figure descriptions
+
+# Limits
+MAX_CONTEXT_LENGTH=5000
+MAX_DESCRIPTION_LENGTH=1000
+
+# Logging
+DEFAULT_LOG_LEVEL=INFO
 ```
 
 Required environment variables:
@@ -103,10 +120,6 @@ The pipeline automatically executes the following steps in sequence:
 - **Generate section hierarchy JSONs** from PDFs by analyzing text formatting
 - Detects headings based on font size, bold formatting, and structure
 - Creates TOC (Table of Contents) structure for later markdown heading correction
-- Configurable parameters:
-  - `min_heading_size`: Minimum font size for headings (default: 12)
-  - `max_levels`: Maximum heading depth (default: 6)
-  - `exclude_headers_footers`: Remove headers/footers from hierarchy analysis
 
 #### Step 4: Backup Creation
 - **Create backup** of all markdown files before post-processing
@@ -139,6 +152,18 @@ The pipeline automatically executes the following steps in sequence:
 - Corrects heading levels (number of `#` characters) based on document structure
 - Ensures proper markdown heading organization and navigation
 - Matches sections across different document formats for consistency
+
+#### Step 10: Bullet Point Standardization
+- **Standardize bullet point formatting** in markdown files
+- Converts inconsistent bullet symbols (•, ◦) to standard markdown format (-)
+- Fixes mixed bullet and numbered list formatting
+- Standardizes numbered lists by ensuring proper formatting (e.g., "1.", "2.")
+- Handles various bullet point patterns:
+  - Converts "- •" to "-"
+  - Converts "- ◦" to "-"
+  - Fixes "- number." to "number." for numbered lists
+  - Converts standalone "•" or "◦" to "-"
+  - Standardizes numbered list formats
 
 ## 📊 Output Formats
 
