@@ -24,7 +24,9 @@ Follow these steps to properly set up the repository:
 ```bash
 git clone https://github.com/Genie-Experiments/pdf-parsing.git
 ```
-
+```bash
+cd pdf-parsing
+```
 ### 2. Initialize Submodules
 
 ```bash
