@@ -58,10 +58,6 @@ cd ..
 create a `.env` file in the project's root directory and copy the below content in the `.env` file then adjust the settings accordingly:
 
 ```
-
-#### .env File Structure
-
-```env
 # Directory paths
 DATA_DIRECTORY=./data # Directory where your PDFs are stored
 OUTPUT_DIRECTORY=./results # Directory for storing output results
@@ -96,7 +92,7 @@ DEFAULT_LOG_LEVEL=INFO
 Required environment variables:
 - `OPENAI_API_KEY`: Your OpenAI API key (required only if using LLM processing)
 
-### 8. Run the Pipeline
+### 7. Run the Pipeline
 
 ```bash
 python main.py
