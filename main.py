@@ -29,28 +29,28 @@ if __name__ == "__main__":
     
     logger.info("Starting PDF Parsing Pipeline")
 
-    # # 1. Process PDF Files recursively from a directory
-    # log_step(1, "Processing PDF files for extracting base line markdown with Dolphin model")
-    # process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
+    # 1. Process PDF Files recursively from a directory
+    log_step(1, "Processing PDF files for extracting base line markdown with Dolphin model")
+    process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
 
-    # logger.info("Starting Post-Processing Steps...")
+    logger.info("Starting Post-Processing Steps...")
     
     # Post-Processing Steps
 
     # 2. Extract raw text from all PDF files
-    # log_step(2, f"Extracting raw text from all PDF files and storing them in {RAW_PDF_TEXT_DIR} folder")
-    # extract_all_pdf_texts(DATA_DIRECTORY, RAW_PDF_TEXT_DIR)
+    log_step(2, f"Extracting raw text from all PDF files and storing them in {RAW_PDF_TEXT_DIR} folder")
+    extract_all_pdf_texts(DATA_DIRECTORY, RAW_PDF_TEXT_DIR)
     
-    # # 3. Generate section hierarchy JSONs from PDFs
-    # log_step(3, "Generating section hierarchy JSONs from PDFs")
-    # batch_process_pdfs(
-    #     data_directory=DATA_DIRECTORY,
-    #     output_base_dir=HIERARCHY_JSON_DIRECTORY,
-    #     min_heading_size=12, # or set to None to auto-detect
-    #     max_levels=6,
-    #     bold_only=False,
-    #     exclude_headers_footers=True
-    # )
+    # 3. Generate section hierarchy JSONs from PDFs
+    log_step(3, "Generating section hierarchy JSONs from PDFs")
+    batch_process_pdfs(
+        data_directory=DATA_DIRECTORY,
+        output_base_dir=HIERARCHY_JSON_DIRECTORY,
+        min_heading_size=12, # or set to None to auto-detect
+        max_levels=6,
+        bold_only=False,
+        exclude_headers_footers=True
+    )
 
     # 4. Create backup of markdown files before post-processing
     log_step(4, "Creating backup of markdown files before post-processing")
