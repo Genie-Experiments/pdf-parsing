@@ -184,7 +184,7 @@ Contains the complete document structure with:
 
 ## ⚠️ Limitations
 
-1. **CPU Processing Speed**: On CPU, processing may take considerable time. GPU processing is recommended for better performance (120 seconds per page on CPU vs 56 seconds on GPU with T4 Colab).
+1. **CPU Processing Speed**: On CPU, processing may take considerable time. It is recommended to use GPU for better performance. On average, it takes 120 seconds per page on CPU and 56s on GPU (Tested on colab with T4 GPU).
 
 2. **Table of Contents**: Table of contents sections are not parsed by this pipeline.
 
