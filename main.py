@@ -1,3 +1,5 @@
+import time
+from datetime import timedelta
 from process_pdf_files.process_pdf_files import process_pdf_files
 from post_processing.process_json_files import process_all_json_files
 from post_processing.markdown_sections_post_processing.fix_markdown_sections import fix_markdown_headings, batch_fix_markdown_sections
@@ -27,11 +29,17 @@ if __name__ == "__main__":
     setup_logging(level='INFO', log_file='logs/pdf_parsing.log')
     logger = get_logger(__name__)
     
+    # Start tracking total execution time
+    pipeline_start_time = time.time()
+    
     logger.info("Starting PDF Parsing Pipeline")
+    logger.info("="*80)
 
     # 1. Process PDF Files recursively from a directory
     log_step(1, "Processing PDF files for extracting base line markdown with Dolphin model")
+    step_start = time.time()
     process_pdf_files(DATA_DIRECTORY, OUTPUT_DIRECTORY, DOLPHIN_SCRIPT, MODEL_PATH)
+    # step_times["Step 1: Process PDF files"] = time.time() - step_start
 
     logger.info("Starting Post-Processing Steps...")
     
@@ -84,4 +92,11 @@ if __name__ == "__main__":
     log_step(10, "Standardizing bullet point formatting in markdown files")
     fix_bullet_points_batch(OUTPUT_DIRECTORY)
     
+    # Calculate total execution time
+    total_time = time.time() - pipeline_start_time
+    
+    # Log execution summary
+    logger.info("="*80)
     logger.info("PDF Parsing Pipeline completed successfully!")
+    logger.info(f"Total execution time: {timedelta(seconds=int(total_time))} ({total_time:.2f}s)")
+    logger.info("="*80)

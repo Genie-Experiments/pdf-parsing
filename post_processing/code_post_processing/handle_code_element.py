@@ -3,7 +3,7 @@ from utils.get_markdown_file_path import get_markdown_file_path
 from post_processing.code_post_processing.extract_code_from_pdf_page import extract_code_from_pdf_page
 from post_processing.code_post_processing.replace_code_in_markdown_file import replace_code_in_markdown_file
 from utils.logger import get_logger, log_success, log_error, log_warning
-from post_processing.code_post_processing import clean_and_format_code
+from post_processing.code_post_processing.clean_and_format_code import clean_and_format_code
 from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 

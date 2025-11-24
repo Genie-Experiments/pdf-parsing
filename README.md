@@ -60,7 +60,7 @@ create a `.env` file in the project's root directory and copy the below content 
 ```
 # Directory paths
 DATA_DIRECTORY=./data # Directory where your PDFs are stored
-OUTPUT_DIRECTORY=./results # Directory for storing output results
+OUTPUT_DIRECTORY=./Results # Directory for storing output results
 PROCESSED_IMAGES_DIR=./processed_images_by_dolphin # Directory for storing processed images by dolphin
 RAW_PDF_TEXT_DIR=./raw_pdf_text # Directory for storing raw PDF text
 HIERARCHY_JSON_DIRECTORY=./section_hierarchy_pdfs # Directory for storing section hierarchy JSON files
@@ -181,6 +181,18 @@ Contains the complete document structure with:
 ### Figures (`.png` files)
 - Figures present in the pdf document are stored in the output directory you specified 
   in the config file. Example path: `output_dir/doc_name/markdown/figures/figure-1.png` 
+
+## ⚠️ Limitations
+
+1. **CPU Processing Speed**: On CPU, processing may take considerable time. GPU processing is recommended for better performance (120 seconds per page on CPU vs 56 seconds on GPU with T4 Colab).
+
+2. **Table of Contents**: Table of contents sections are not parsed by this pipeline.
+
+3. **Complex Table Layouts**: Tables with complex layouts may have some inaccuracies in the parsed output.
+
+4. **Code Formatting Without LLM**: When processing code without LLM enhancement, there is a rare possibility that code indentation and formatting may be compromised.
+
+5. **OCR Errors in Complex Layouts**: In rare cases with overly complex document layouts (such as 4-column layouts), some OCR errors may occur.
 
 ## 📄 License
 
