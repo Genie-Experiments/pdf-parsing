@@ -49,6 +49,7 @@ source .venv/bin/activate
 
 ```bash
 cd Dolphin
+uv add huggingface_hub
 huggingface-cli download ByteDance/Dolphin-1.5 --local-dir ./hf_model
 cd ..
 ```
