@@ -8,6 +8,7 @@ wheels/
 
 # Virtual environments
 venv/
+pdf-parsing/
 
 # env file
 .env
@@ -27,6 +28,7 @@ temp_results/
 temp_raw_text/
 
 pdfs_raw_text/
+raw_pdf_text/
 
 ground_truth.md
 
