@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, asdict
 from difflib import SequenceMatcher
-import argparse
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 @dataclass
 class Element:
@@ -894,24 +898,25 @@ def print_summary(results: Dict):
     print(f"{'='*60}\n")
 
 
-PARSER_NAME = "pdfparsingpipelinedata"
-DATA_DIR = Path("data")
-GOLDEN_DIR = DATA_DIR / "groundtruthdata"
-GENERATED_DIR = DATA_DIR / PARSER_NAME
-OUTPUT_DIR = DATA_DIR / "comparison_reports" / PARSER_NAME
+PARSER_NAME = os.getenv("PARSER_NAME", "pdfparsingpipelinedata")
+DATA_DIRECTORY = Path(os.getenv("DATA_DIRECTORY", "data"))
+GROUND_TRUTH_DIRECTORY = Path(os.getenv("GROUND_TRUTH_DIRECTORY", "./data/groundtruthdata"))
+GENERATED_DIRECTORY = DATA_DIRECTORY / PARSER_NAME
+COMPARISON_OUTPUT_DIRECTORY = Path(os.getenv("COMPARISON_OUTPUT_DIRECTORY", "./data/comparison_reports")) / PARSER_NAME
+
 
 def main():
     # Create output directory
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    COMPARISON_OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
-    golden_md_files = list(GOLDEN_DIR.glob("*.md"))
+    golden_md_files = list(GROUND_TRUTH_DIRECTORY.glob("*.md"))
     if not golden_md_files:
-        print(f"No markdown files found in {GOLDEN_DIR}")
+        print(f"No markdown files found in {GROUND_TRUTH_DIRECTORY}")
         return 1
 
-    generated_md_files = list(GENERATED_DIR.glob("*.md"))
+    generated_md_files = list(GENERATED_DIRECTORY.glob("*.md"))
     if not generated_md_files:
-        print(f"No markdown files found in {GENERATED_DIR}")
+        print(f"No markdown files found in {GENERATED_DIRECTORY}")
         return 1
 
     # Build lookup for generated files by stem
@@ -926,12 +931,12 @@ def main():
             print(f"Skipping {golden_md.name} — no matching generated file")
             continue
 
-        output_file = OUTPUT_DIR / f"{file_stem}_comparison.json"
+        output_file = COMPARISON_OUTPUT_DIRECTORY / f"{file_stem}_comparison.json"
 
         try:
             results = compare_documents(
-                GOLDEN_DIR,        # golden folder
-                GENERATED_DIR,     # generated folder
+                GROUND_TRUTH_DIRECTORY,        # golden folder
+                GENERATED_DIRECTORY,     # generated folder
                 golden_md.name,    # filename
                 output_file
             )
