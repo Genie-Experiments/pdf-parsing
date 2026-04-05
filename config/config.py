@@ -1,25 +1,24 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field, SecretStr
 from typing import List, Optional
+
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # Directories
     data_directory: str = Field("./Data", env="DATA_DIRECTORY")
     output_directory: str = Field("./Results", env="OUTPUT_DIRECTORY")
-    processed_images_dir: str = Field("./processed_images_by_dolphin", env="PROCESSED_IMAGES_DIR")
-    raw_pdf_text_dir: str = Field("./pdfs_raw_text", env="RAW_PDF_TEXT_DIR")
-    hierarchy_json_directory: str = Field("./section_hierarchy_pdfs", env="HIERARCHY_JSON_DIRECTORY")
 
-    # Internal paths
-    dolphin_script: str = Field("./Dolphin/demo_page.py", env="DOLPHIN_SCRIPT")
-    model_path: str = Field("./Dolphin/hf_model", env="MODEL_PATH")
-    html_to_markdown_dir: str = Field("./html-to-markdown", env="HTML_TO_MARKDOWN_DIR")
+    # Pipeline run control
+    resume: bool = Field(False, env="RESUME")
+    start_from_step: int = Field(1, env="START_FROM_STEP")
 
     # Flags
     process_code_using_llm: bool = Field(False, env="PROCESS_CODE_USING_LLM")
     process_figures_using_llm: bool = Field(False, env="PROCESS_FIGURES_USING_LLM")
-    segments_to_refine: List[str] = Field(default_factory=lambda: ["code", "fig", "tab"], env="SEGMENTS_TO_REFINE")
+    segments_to_refine: List[str] = Field(
+        default_factory=lambda: ["code", "fig", "tab"], env="SEGMENTS_TO_REFINE"
+    )
 
     # OpenAI models
     openai_api_key: Optional[SecretStr] = Field(None, env="OPENAI_API_KEY")
@@ -36,5 +35,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
 
 settings = Settings()

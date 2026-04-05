@@ -1,205 +1,115 @@
-# PDF Parsing Pipeline with Dolphin AI Model
+# PDF Parsing Pipeline
 
-A comprehensive PDF document parsing pipeline that uses ByteDance's Dolphin AI model to extract and process various document elements including tables, code blocks, and figures from PDF files.
-## 🌟 Features
+A PDF parsing pipeline that uses ByteDance's [Dolphin](https://github.com/bytedance/Dolphin) model to extract text, tables, code blocks, and figures from PDF files into clean Markdown.
 
-- **Batch PDF Processing**: Process multiple PDF files in a directory simultaneously
-- **AI-Powered Document Analysis**: Uses Dolphin model for intelligent document layout understanding
-- **LLM-Enhanced Code Processing**: Optional high-quality code extraction using OpenAI GPT-4o Vision API
-- **Intelligent Section Hierarchy Fixing**: Automatically corrects markdown heading levels using TOC JSON structure matching
-- **Structured Output**: Generates organized JSON and Markdown outputs for each processed document
+## Prerequisites
 
-## 📋 Prerequisites
+- Python 3.12 + [uv](https://docs.astral.sh/uv/)
+- GPU recommended (CPU: ~120s/page, T4 GPU: ~56s/page)
+- `make` for setup and code quality commands
 
-- Python 3.10 or higher
-- Windows, macOS, or Linux
-- CUDA-compatible GPU (recommended for faster processing)
-
-## 🚀 Installation
-
-Follow these steps to properly set up the repository:
-
-### 1. Clone the Repository
+## Setup
 
 ```bash
 git clone https://github.com/Genie-Experiments/pdf-parsing.git
-```
-```bash
 cd pdf-parsing
+make setup
 ```
-### 2. Initialize Submodules
+
+`make setup` initializes submodules, installs dependencies, and downloads the Dolphin model weights.
+
+Then configure your environment:
 
 ```bash
-git submodule update --init
+cp .env.example .env
+# edit .env as needed
 ```
 
-### 3. Install Dependencies
+Key settings:
 
-```bash
-uv sync
-```
+| Variable | Default | Description |
+|---|---|---|
+| `DATA_DIRECTORY` | `./Data` | Input PDF directory |
+| `OUTPUT_DIRECTORY` | `./Results` | Output root directory |
+| `SEGMENTS_TO_REFINE` | `["code","fig","tab"]` | Which segment types to post-process |
+| `PROCESS_CODE_USING_LLM` | `false` | Use GPT-4o Vision for code extraction |
+| `PROCESS_FIGURES_USING_LLM` | `false` | Use GPT-4o Vision for figure descriptions |
+| `OPENAI_API_KEY` | — | Required only if either LLM flag is `true` |
+| `RESUME` | `false` | Skip steps whose outputs already exist |
+| `START_FROM_STEP` | `1` | Start pipeline from a specific step (1–10) |
 
-### 4. Activate Virtual Environment
+See `.env.example` for all options with descriptions.
 
-```bash
-source .venv/bin/activate
-```
-
-### 5. Download the Dolphin Model
-
-```bash
-cd Dolphin
-uv add huggingface_hub
-huggingface-cli download ByteDance/Dolphin-1.5 --local-dir ./hf_model
-cd ..
-```
-
-### 6. Configure Environment Variables
-
-create a `.env` file in the project's root directory and copy the below content in the `.env` file then adjust the settings accordingly:
-
-```
-# Directory paths
-DATA_DIRECTORY=./data # Directory where your PDFs are stored
-OUTPUT_DIRECTORY=./Results # Directory for storing output results
-PROCESSED_IMAGES_DIR=./processed_images_by_dolphin # Directory for storing processed images by dolphin
-RAW_PDF_TEXT_DIR=./raw_pdf_text # Directory for storing raw PDF text
-HIERARCHY_JSON_DIRECTORY=./section_hierarchy_pdfs # Directory for storing section hierarchy JSON files
-
-# !! Important: Internal paths: Do not change these values !!
-DOLPHIN_SCRIPT=./Dolphin/demo_page.py
-MODEL_PATH=./Dolphin/hf_model
-HTML_TO_MARKDOWN_DIR=./html-to-markdown
-
-# Processing flags
-PROCESS_CODE_USING_LLM=false # Whether to use LLM for code segments refinement
-PROCESS_FIGURES_USING_LLM=false # Whether to use LLM for generating figures description
-SEGMENTS_TO_REFINE=["code","fig","tab"] 
-# Comma-separated list of segment types to refine: Supported: code, fig, tab. By refinement we mean that for tables, html code will be converted to clean markdown. For code, existing code segments in markdown will be replaced with well formatted code segments. For figures, if PROCESS_FIGURES_USING_LLM=True the figures will be sent to LLM for description generation. 
-
-# OpenAI models
-#OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL_VISION=gpt-4o-mini # Model for code segments refinement
-OPENAI_MODEL_TEXT=gpt-4o-mini # Model for generating figure descriptions
-
-# Limits
-MAX_CONTEXT_LENGTH=5000
-MAX_DESCRIPTION_LENGTH=1000
-
-# Logging
-DEFAULT_LOG_LEVEL=INFO
-```
-
-Required environment variables:
-- `OPENAI_API_KEY`: Your OpenAI API key (required only if using LLM processing)
-
-### 7. Run the Pipeline
+## Running
 
 ```bash
 python main.py
 ```
 
-## 🔧 How the Project Works
+## Make Commands
 
-### Processing Pipeline Steps
+| Command | Description |
+|---|---|
+| `make setup` | Full one-time project setup (submodules + deps + model) |
+| `make install` | Install production dependencies |
+| `make install-dev` | Install dev dependencies (linters, formatters) |
+| `make format` | Auto-fix formatting with isort + black |
+| `make lint` | Run ruff + pylint |
+| `make typecheck` | Run mypy |
+| `make check` | Run lint + typecheck (no fixes) |
+| `make all` | Format then check |
 
-The pipeline automatically executes the following steps in sequence:
+## Pipeline Steps
 
-#### Step 1: Initial PDF Processing
-- **Process PDF files** using the Dolphin AI model to extract baseline markdown
-- Converts PDFs to structured markdown with layout analysis
-- Creates JSON files containing document structure and element coordinates
+| Step | Description |
+|---|---|
+| 1 | **Process PDFs** — Dolphin model extracts baseline Markdown + layout JSON |
+| 2 | **Extract raw text** — PyMuPDF extraction saved for OCR correction reference |
+| 3 | **Section hierarchy** — analyzes PDF font metrics to detect heading levels |
+| 4 | **Backup** — copies `.md` files with `_backup` suffix before any mutation |
+| 5 | **Segment refinement** — tables → Markdown, code cleanup, optional LLM figure descriptions |
+| 6 | **Insert page breaks** — replaces `---` markers with `<!-- page_break_N -->` comments |
+| 7 | **Remove headers/footers** — strips repetitive cross-page content |
+| 8 | **Fix OCR errors** — fuzzy-matches markdown against raw PyMuPDF text to correct mistakes |
+| 9 | **Fix section hierarchy** — corrects heading levels using the JSON from step 3 |
+| 10 | **Standardize bullets** — converts `•`, `◦`, etc. to standard markdown `-` |
 
-#### Step 2: Raw Text Extraction
-- **Extract raw text** from all PDF files using PyMuPDF
-- Stores clean text in `RAW_PDF_TEXT_DIR` for later OCR error correction
-- Maintains original document structure and formatting
+## Output Structure
 
-#### Step 3: Section Hierarchy Generation
-- **Generate section hierarchy JSONs** from PDFs by analyzing text formatting
-- Detects headings based on font size, bold formatting, and structure
-- Creates TOC (Table of Contents) structure for later markdown heading correction
+```
+Results/
+├── <doc_name>/
+│   ├── Dolphin/
+│   │   └── imgs_pages/              # Per-page images generated by Dolphin (step 1)
+│   ├── recognition_json/
+│   │   └── <doc_name>.json          # Dolphin layout JSON (bounding boxes, element types)
+│   └── markdown/
+│       ├── <doc_name>.md            # Final post-processed Markdown
+│       ├── <doc_name>_backup.md     # Pre-post-processing backup (step 4)
+│       ├── <doc_name>_corrections.json  # OCR correction log (step 8)
+│       └── figures/
+│           └── *.png                # Extracted figure images
+└── _pipeline/                       # Internal pipeline artifacts
+    ├── raw_text/<doc_name>/
+    │   └── <doc_name>.txt           # PyMuPDF raw text (step 2)
+    └── section_hierarchy/
+        └── <doc_name>.json          # Heading hierarchy JSON (step 3)
+```
 
-#### Step 4: Backup Creation
-- **Create backup** of all markdown files before post-processing
-- Adds `_backup` suffix to preserve original processed files
-- Ensures data safety during intensive post-processing operations
+An example output for `ReSP_v2.pdf` is included in [`Results/ReSP_v2/`](Results/ReSP_v2/).
 
-#### Step 5: Segment Refinement
-- **Process JSON files** for segment refinement based on `SEGMENTS_TO_REFINE` configuration
-- Refines specific document elements (code blocks, figures, tables)
-- Optionally uses LLM processing for enhanced code and figure extraction
+## Limitations
 
-#### Step 6: Page Break Insertion
-- **Insert page breaks** in markdown files to maintain document structure
-- Adds clear separators between pages for better readability
-- Preserves original document pagination context
+- **Table of Contents**: ToC sections are not parsed.
+- **Complex tables**: Multi-span or nested tables may have inaccuracies.
+- **Code without LLM**: Rule-based code formatting may lose indentation in edge cases.
+- **Complex layouts**: 4-column or unusual layouts may produce occasional OCR errors.
 
-#### Step 7: Header and Footer Removal
-- **Remove headers and footers** from markdown files
-- Cleans up repetitive content that appears on every page
-- Improves content quality by removing non-essential document elements
+## License
 
-#### Step 8: OCR Error Correction
-- **Fix OCR errors** by comparing processed markdown with raw PDF text
-- Uses fuzzy string matching to identify and correct OCR mistakes
-- Leverages clean raw text extraction to improve accuracy
-- Preserves document structure while enhancing text quality
+This project incorporates ByteDance's Dolphin model. See the [Dolphin repository](https://github.com/bytedance/Dolphin) for licensing.
 
-#### Step 9: Section Hierarchy Correction
-- **Fix markdown section hierarchy** using the generated hierarchy JSON files
-- Corrects heading levels (number of `#` characters) based on document structure
-- Ensures proper markdown heading organization and navigation
-- Matches sections across different document formats for consistency
+## Acknowledgments
 
-#### Step 10: Bullet Point Standardization
-- **Standardize bullet point formatting** in markdown files
-- Converts inconsistent bullet symbols (•, ◦) to standard markdown format (-)
-- Fixes mixed bullet and numbered list formatting
-- Standardizes numbered lists by ensuring proper formatting (e.g., "1.", "2.")
-- Handles various bullet point patterns:
-  - Converts "- •" to "-"
-  - Converts "- ◦" to "-"
-  - Fixes "- number." to "number." for numbered lists
-  - Converts standalone "•" or "◦" to "-"
-  - Standardizes numbered list formats
-
-## 📊 Output Formats
-
-### JSON Output (`doc_name.json`)
-Contains the complete document structure with:
-- Page-by-page layout analysis
-- Element bounding boxes and coordinates
-- Text content for each element
-- Element types and reading order
-
-### Markdown Output (`.md` files)
-- Clean, readable Markdown format
-- Properly formatted tables
-- Preserved document structure
-- Easy to integrate with documentation workflows
-
-### Figures (`.png` files)
-- Figures present in the pdf document are stored in the output directory you specified 
-  in the config file. Example path: `output_dir/doc_name/markdown/figures/figure-1.png` 
-
-## ⚠️ Limitations
-
-1. **CPU Processing Speed**: On CPU, processing may take considerable time. It is recommended to use GPU for better performance. On average, it takes 120 seconds per page on CPU and 56s on GPU (Tested on colab with T4 GPU).
-
-2. **Table of Contents**: Table of contents sections are not parsed by this pipeline.
-
-3. **Complex Table Layouts**: Tables with complex layouts may have some inaccuracies in the parsed output.
-
-4. **Code Formatting Without LLM**: When processing code without LLM enhancement, there is a rare possibility that code indentation and formatting may be compromised.
-
-5. **OCR Errors in Complex Layouts**: In rare cases with overly complex document layouts (such as 4-column layouts), some OCR errors may occur.
-
-## 📄 License
-
-This project incorporates ByteDance's Dolphin model. Please refer to the original Dolphin repository for licensing information: [ByteDance/Dolphin](https://github.com/bytedance/Dolphin)
-
-## 🙏 Acknowledgments
-
-- [ByteDance Dolphin](https://github.com/bytedance/Dolphin) - The core AI model for document parsing
-- [Html to Markdown converter](https://github.com/JohannesKaufmann/html-to-markdown) - The HTML to Markdown converter for clean table formatting
+- [ByteDance Dolphin](https://github.com/bytedance/Dolphin) — core document parsing model
+- [html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) — HTML table to Markdown conversion

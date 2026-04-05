@@ -1,3 +1,5 @@
-# Ignore all contents of this directory except this .gitignore file
+# Ignore all generated results except the bundled example
 *
 !.gitignore
+!ReSP_v2/
+!ReSP_v2/**

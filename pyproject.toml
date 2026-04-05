@@ -22,3 +22,12 @@ dependencies = [
     "transformers>=4.57.1",
 ]
 
+[dependency-groups]
+dev = [
+    "black==26.1.0",
+    "isort==5.13.2",
+    "ruff==0.15.0",
+    "pylint==3.3.7",
+    "mypy==1.19.1",
+    "ipython==9.10.0",
+]

@@ -18,10 +18,12 @@ venv/
 # Data directory - contains PDF files that should not be tracked
 Data/
 
-# Results directory - contains generated output files
-Results
-
-/Processed-Images-By-Dolphin
+# Results directory - ignore user-generated outputs but keep the example
+Results/**
+!Results/
+!Results/.gitignore
+!Results/ReSP_v2/
+!Results/ReSP_v2/**
 
 temp_results/
 temp_raw_text/

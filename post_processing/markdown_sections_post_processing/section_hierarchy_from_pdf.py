@@ -1,16 +1,18 @@
-import pymupdf  # PyMuPDF
 import json
-import re
 import os
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
+import pymupdf  # PyMuPDF
+
 # from config.config import DATA_DIRECTORY
-from utils.logger import get_logger, log_success, log_error, log_warning
+from utils.logger import get_logger, log_error, log_success, log_warning
 
 # Configure logging
 logger = get_logger(__name__)
+
 
 def extract_heading_candidates_from_pdf(pdf_path):
     """
@@ -27,15 +29,15 @@ def extract_heading_candidates_from_pdf(pdf_path):
 
     # Patterns to exclude (non-heading content)
     exclude_patterns = [
-        r'^\d{4}-\d{2}-\d{2}',  # Dates
-        r'^Page\s+\d+',  # Page numbers
-        r'^Copyright\s*©',  # Copyright notices
-        r'^\d+\s*$',  # Just numbers
-        r'^[A-Z]{2,}\s*\d{4}',  # Document codes like "AD 2022"
-        r'^\w+@\w+\.\w+',  # Email addresses
-        r'^https?://',  # URLs
-        r'^\.\.\.',  # Ellipsis/continuation
-        r'^[\d\.\s]+$',  # Only numbers and dots
+        r"^\d{4}-\d{2}-\d{2}",  # Dates
+        r"^Page\s+\d+",  # Page numbers
+        r"^Copyright\s*©",  # Copyright notices
+        r"^\d+\s*$",  # Just numbers
+        r"^[A-Z]{2,}\s*\d{4}",  # Document codes like "AD 2022"
+        r"^\w+@\w+\.\w+",  # Email addresses
+        r"^https?://",  # URLs
+        r"^\.\.\.",  # Ellipsis/continuation
+        r"^[\d\.\s]+$",  # Only numbers and dots
     ]
 
     for page_num, page in enumerate(doc):
@@ -57,12 +59,14 @@ def extract_heading_candidates_from_pdf(pdf_path):
                     if text == "":
                         continue
                     line_text += text + " "
-                    line_properties.append({
-                        "size": round(span["size"], 2),
-                        "flags": span["flags"],
-                        "font": span["font"],
-                        "color": span.get("color", 0)
-                    })
+                    line_properties.append(
+                        {
+                            "size": round(span["size"], 2),
+                            "flags": span["flags"],
+                            "font": span["font"],
+                            "color": span.get("color", 0),
+                        }
+                    )
 
                 line_text = line_text.strip()
 
@@ -101,23 +105,25 @@ def extract_heading_candidates_from_pdf(pdf_path):
                     is_header = y_pos < page_height * 0.1
                     is_footer = y_pos > page_height * 0.9
 
-                    heading_candidates.append({
-                        "text": line_text,
-                        "page": page_num + 1,  # 1-indexed for readability
-                        "size": primary_props["size"],
-                        "flags": primary_props["flags"],
-                        "is_bold": is_bold,
-                        "font": primary_props["font"],
-                        "color": primary_props["color"],
-                        "is_header": is_header,
-                        "is_footer": is_footer,
-                        "bbox": {
-                            "x0": line["bbox"][0],
-                            "y0": line["bbox"][1],
-                            "x1": line["bbox"][2],
-                            "y1": line["bbox"][3]
+                    heading_candidates.append(
+                        {
+                            "text": line_text,
+                            "page": page_num + 1,  # 1-indexed for readability
+                            "size": primary_props["size"],
+                            "flags": primary_props["flags"],
+                            "is_bold": is_bold,
+                            "font": primary_props["font"],
+                            "color": primary_props["color"],
+                            "is_header": is_header,
+                            "is_footer": is_footer,
+                            "bbox": {
+                                "x0": line["bbox"][0],
+                                "y0": line["bbox"][1],
+                                "x1": line["bbox"][2],
+                                "y1": line["bbox"][3],
+                            },
                         }
-                    })
+                    )
 
     doc.close()
     return heading_candidates
@@ -149,12 +155,17 @@ def analyze_font_patterns(heading_candidates):
     return {
         "size_frequency": dict(sorted_sizes),
         "size_examples": dict(size_examples),
-        "unique_sizes": len(size_frequency)
+        "unique_sizes": len(size_frequency),
     }
 
 
-def assign_hierarchy_levels(heading_candidates, min_heading_size=None, max_levels=6,
-                            bold_only=False, exclude_headers_footers=True):
+def assign_hierarchy_levels(
+    heading_candidates,
+    min_heading_size=None,
+    max_levels=6,
+    bold_only=False,
+    exclude_headers_footers=True,
+):
     """
     Assign hierarchy levels to headings based on font properties.
 
@@ -243,15 +254,19 @@ def assign_hierarchy_levels(heading_candidates, min_heading_size=None, max_level
         # Only include if style was mapped to a level
         if style_key in level_map:
             level = level_map[style_key]
-            hierarchy.append({
-                "text": candidate["text"],
-                "level": level,
-                "page": candidate["page"],
-                "size": candidate["size"],
-                "is_bold": candidate["is_bold"],
-                "font": candidate["font"],
-                "style_category": "size_{}_bold_{}".format(style_key[0], style_key[1])
-            })
+            hierarchy.append(
+                {
+                    "text": candidate["text"],
+                    "level": level,
+                    "page": candidate["page"],
+                    "size": candidate["size"],
+                    "is_bold": candidate["is_bold"],
+                    "font": candidate["font"],
+                    "style_category": "size_{}_bold_{}".format(
+                        style_key[0], style_key[1]
+                    ),
+                }
+            )
 
     return hierarchy
 
@@ -288,7 +303,7 @@ def build_parent_child_tree(hierarchy):
             "size": heading.get("size"),
             "is_bold": heading.get("is_bold"),
             "font": heading.get("font"),
-            "children": []
+            "children": [],
         }
 
         # Remove items from stack that are at same or deeper level
@@ -329,8 +344,14 @@ def tree_to_nested_dict(tree):
     return result
 
 
-def generate_hierarchy_json(pdf_path, output_json_path=None, min_heading_size=None,
-                            max_levels=6, bold_only=False, exclude_headers_footers=True):
+def generate_hierarchy_json(
+    pdf_path,
+    output_json_path=None,
+    min_heading_size=None,
+    max_levels=6,
+    bold_only=False,
+    exclude_headers_footers=True,
+):
     """
     Extract heading hierarchy from PDF and save as nested JSON.
 
@@ -353,15 +374,11 @@ def generate_hierarchy_json(pdf_path, output_json_path=None, min_heading_size=No
 
     # Analyze patterns
     patterns = analyze_font_patterns(candidates)
-    logger.info("Detected {} unique font sizes".format(patterns['unique_sizes']))
+    logger.info("Detected {} unique font sizes".format(patterns["unique_sizes"]))
 
     # Assign hierarchy
     hierarchy = assign_hierarchy_levels(
-        candidates,
-        min_heading_size,
-        max_levels,
-        bold_only,
-        exclude_headers_footers
+        candidates, min_heading_size, max_levels, bold_only, exclude_headers_footers
     )
     logger.info("Assigned {} headings to hierarchy".format(len(hierarchy)))
 
@@ -373,7 +390,7 @@ def generate_hierarchy_json(pdf_path, output_json_path=None, min_heading_size=No
 
     # Save to file if path provided
     if output_json_path:
-        with open(output_json_path, 'w', encoding='utf-8') as f:
+        with open(output_json_path, "w", encoding="utf-8") as f:
             json.dump(nested_json, f, indent=2, ensure_ascii=False)
         log_success("Saved clean hierarchy JSON to: {}".format(output_json_path))
 
@@ -385,7 +402,9 @@ def print_tree_recursive(node, indent=0, max_text_len=60):
     marker = "#" * node["level"]
     indent_str = "  " * indent
     text = node["text"][:max_text_len]
-    logger.info("Page {:3d} | {:6s} | {}{}".format(node['page'], marker, indent_str, text))
+    logger.info(
+        "Page {:3d} | {:6s} | {}{}".format(node["page"], marker, indent_str, text)
+    )
 
     for child in node["children"]:
         print_tree_recursive(child, indent + 1, max_text_len)
@@ -416,58 +435,63 @@ def print_hierarchy_preview(hierarchy_data, max_items=20):
 def find_pdf_files(data_directory):
     """
     Recursively find all PDF files in the data directory.
-    
+
     Args:
         data_directory: Path to the data directory
-    
+
     Returns:
         List of tuples (pdf_file_path, relative_path_from_data_dir)
     """
     pdf_files = []
     data_path = Path(data_directory)
-    
+
     if not data_path.exists():
         log_warning(f"Data directory {data_directory} does not exist")
         return pdf_files
-    
+
     # Recursively find all PDF files
     for pdf_file in data_path.rglob("*.pdf"):
         # Get the relative path from the data directory
         relative_path = pdf_file.relative_to(data_path)
         pdf_files.append((str(pdf_file), str(relative_path)))
-    
+
     return pdf_files
 
 
 def create_output_path(pdf_relative_path, output_base_dir):
     """
     Create the output path for a PDF file, maintaining directory structure.
-    
+
     Args:
         pdf_relative_path: Relative path of PDF from data directory
         output_base_dir: Base output directory
-    
+
     Returns:
         Tuple of (output_json_path, output_directory)
     """
     pdf_path = Path(pdf_relative_path)
-    
+
     # Change extension from .pdf to .json
     json_filename = pdf_path.stem + ".json"
-    
+
     # Create output path maintaining directory structure
     output_json_path = Path(output_base_dir) / pdf_path.parent / json_filename
     output_directory = output_json_path.parent
-    
+
     return str(output_json_path), str(output_directory)
 
 
-def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy_pdfs", 
-                       min_heading_size=None, max_levels=6, bold_only=False, 
-                       exclude_headers_footers=True):
+def batch_process_pdfs(
+    data_directory=None,
+    output_base_dir="./section_hierarchy_pdfs",
+    min_heading_size=None,
+    max_levels=6,
+    bold_only=False,
+    exclude_headers_footers=True,
+):
     """
     Batch process all PDFs in the data directory and save section hierarchy JSONs.
-    
+
     Args:
         data_directory: Path to data directory (uses config if None)
         output_base_dir: Base directory for output JSON files
@@ -475,46 +499,48 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
         max_levels: Maximum heading levels
         bold_only: If True, only consider bold text as headings
         exclude_headers_footers: If True, exclude text in header/footer areas
-    
+
     Returns:
         Dictionary with processing statistics
     """
-    
+
     logger.info(f"Starting batch processing of PDFs from: {data_directory}")
     logger.info(f"Output directory: {output_base_dir}")
     logger.info("=" * 80)
-    
+
     # Find all PDF files
     pdf_files = find_pdf_files(data_directory)
-    
+
     if not pdf_files:
         log_warning(f"No PDF files found in {data_directory}")
         return {"total_files": 0, "processed": 0, "failed": 0, "skipped": 0}
-    
+
     logger.info(f"Found {len(pdf_files)} PDF files to process")
-    
+
     # Statistics tracking
     stats = {"total_files": len(pdf_files), "processed": 0, "failed": 0, "skipped": 0}
-    
+
     for i, (pdf_path, relative_path) in enumerate(pdf_files, 1):
         logger.info(f"[{i}/{len(pdf_files)}] Processing: {relative_path}")
-        
+
         try:
             # Create output path
-            output_json_path, output_dir = create_output_path(relative_path, output_base_dir)
-            
+            output_json_path, output_dir = create_output_path(
+                relative_path, output_base_dir
+            )
+
             # Check if output already exists
             if os.path.exists(output_json_path):
                 log_warning(f"JSON already exists: {output_json_path}")
                 response = input("  Overwrite? (y/N): ").lower().strip()
-                if response != 'y':
+                if response != "y":
                     log_warning(f"Skipped: {relative_path}")
                     stats["skipped"] += 1
                     continue
-            
+
             # Create output directory if it doesn't exist
             os.makedirs(output_dir, exist_ok=True)
-            
+
             # Process the PDF
             nested_json = generate_hierarchy_json(
                 pdf_path=pdf_path,
@@ -522,25 +548,25 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
                 min_heading_size=min_heading_size,
                 max_levels=max_levels,
                 bold_only=bold_only,
-                exclude_headers_footers=exclude_headers_footers
+                exclude_headers_footers=exclude_headers_footers,
             )
-            
+
             log_success(f"Successfully processed: {relative_path}")
             logger.info(f"Saved to: {output_json_path}")
-            
+
             # Show brief preview
             if isinstance(nested_json, dict) and nested_json:
                 top_sections = list(nested_json.keys())[:3]
                 logger.info(f"Top sections: {', '.join(top_sections)}")
                 if len(nested_json) > 3:
                     logger.info(f"... and {len(nested_json) - 3} more sections")
-            
+
             stats["processed"] += 1
-            
+
         except Exception as e:
             log_error(f"Failed to process {relative_path}: {str(e)}")
             stats["failed"] += 1
-    
+
     # Print final statistics
     logger.info("=" * 80)
     logger.info("BATCH PROCESSING COMPLETED")
@@ -550,8 +576,5 @@ def batch_process_pdfs(data_directory=None, output_base_dir="./section_hierarchy
     logger.info(f"Failed: {stats['failed']}")
     logger.info(f"Skipped: {stats['skipped']}")
     logger.info("=" * 80)
-    
+
     return stats
-
-
-
