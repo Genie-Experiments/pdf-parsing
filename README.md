@@ -125,7 +125,6 @@ ARQ Worker picks up task
 Frontend
     ↓ user selects PDF, configures page + segment options, submits
     ↓ step progress panel updated by polling GET /jobs/{id} every 2 s
-    ↓ live pipeline logs streamed via EventSource (SSE)
     ↓ on done: fetches markdown + segments
     ↓ PDF rendered in canvas, hover a region → highlight matching markdown
     ↓ download extracted Markdown from the header
