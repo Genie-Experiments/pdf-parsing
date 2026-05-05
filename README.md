@@ -124,7 +124,8 @@ ARQ Worker picks up task
 
 Frontend
     ↓ user selects PDF, configures page + segment options, submits
-    ↓ step progress panel + live logs streamed via EventSource (SSE)
+    ↓ step progress panel updated by polling GET /jobs/{id} every 2 s
+    ↓ live pipeline logs streamed via EventSource (SSE)
     ↓ on done: fetches markdown + segments
     ↓ PDF rendered in canvas, hover a region → highlight matching markdown
     ↓ download extracted Markdown from the header
@@ -139,7 +140,7 @@ Frontend
 | `postgres` | Job metadata |
 | `redis` | Job queue + live log pub/sub |
 | `minio` | Object store for PDFs and results |
-| `frontend` | Next.js 15 web UI |
+| `frontend` | Next.js 16 web UI |
 
 ### Quick Start — Docker (recommended)
 
@@ -236,7 +237,7 @@ See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend
 
 ```bash
 # 1. Start infrastructure (Postgres, Redis, MinIO)
-docker compose up postgres redis minio -d
+make infra-up
 
 # 2. Install all deps + download model weights
 make setup
