@@ -65,3 +65,4 @@ class JobRead(SQLModel):
     created_at: datetime
     updated_at: datetime
     error_message: Optional[str] = None
+    current_step: int = 0

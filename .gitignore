@@ -58,6 +58,10 @@ section_hierarchy_pdfs/
 .DS_Store
 **/.DS_Store
 
+# Frontend lockfile — platform-specific optional native binaries (lightningcss, @next/swc)
+# make it untrackable from macOS; Docker regenerates it at build time
+frontend/package-lock.json
+
 # Local sample input / pipeline output — not for version control
 sample_input_dir/
 pipeline/Output/

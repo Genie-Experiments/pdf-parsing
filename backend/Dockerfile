@@ -42,7 +42,8 @@ WORKDIR /app
 # --link: these COPY layers are cache-independent from the builder stage,
 # so a runtime base image update doesn't bust the venv layer.
 COPY --from=builder --link --chown=appuser:appuser /app/backend/.venv ./backend/.venv
-ENV PATH="/app/backend/.venv/bin:$PATH"
+ENV PATH="/app/backend/.venv/bin:$PATH" \
+    PYTHONPATH="/app/backend"
 
 COPY --link --chown=appuser:appuser pipeline/ ./pipeline/
 COPY --link --chown=appuser:appuser backend/ ./backend/

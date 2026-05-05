@@ -37,7 +37,7 @@ export function PdfViewer({ pdfUrl, lockedPage }: Props) {
     let cancelled = false;
     (async () => {
       const lib = await getPdfJs();
-      const doc = await lib.getDocument(pdfUrl).promise;
+      const doc = await lib.getDocument({ url: pdfUrl, withCredentials: true }).promise;
       if (cancelled) return;
       pdfDocRef.current = doc;
       setTotalPages(doc.numPages);

@@ -141,6 +141,10 @@ def run_pipeline_for_job(
 
             def _step(n: int, label: str, fn):
                 handler.publish_raw(f"\n{'='*60}\nSTEP {n}: {label}\n{'='*60}")
+                try:
+                    handler._redis.set(f"job:{job_id}:step", n, ex=86400)
+                except Exception:
+                    pass
                 fn()
 
             _step(

@@ -44,6 +44,17 @@ packages = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# CPU-only PyTorch wheels — avoids pulling 1.5 GB of CUDA packages on servers
+# that don't have a GPU. GPU installs override this via make install-pipeline-gpu.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
 [dependency-groups]
 dev = [
     "black>=26.3.1",

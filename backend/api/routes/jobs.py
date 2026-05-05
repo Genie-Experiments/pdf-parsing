@@ -225,8 +225,15 @@ async def get_job(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(db_session),
     email: str = Depends(require_auth),
-) -> Job:
-    return await _get_owned_job(job_id, email, session)
+) -> JobRead:
+    job = await _get_owned_job(job_id, email, session)
+    redis = aioredis.from_url(settings.redis_url)
+    try:
+        step_val = await redis.get(f"job:{job_id}:step")
+        current_step = int(step_val) if step_val else 0
+    finally:
+        await redis.aclose()
+    return JobRead(**job.model_dump(), current_step=current_step)
 
 
 @router.get("/{job_id}/logs")
@@ -296,6 +303,24 @@ async def get_pdf_url(
     job = await _get_owned_job(job_id, email, session)
     pdf_url = await asyncio.to_thread(storage.presigned_url, job.pdf_key)
     return {"pdf_url": pdf_url}
+
+
+@router.get("/{job_id}/pdf/content")
+async def stream_pdf(
+    job_id: uuid.UUID,
+    session: AsyncSession = Depends(db_session),
+    email: str = Depends(require_auth),
+):
+    """Stream the original PDF bytes through the API (avoids MinIO CORS issues)."""
+    from fastapi.responses import Response
+
+    job = await _get_owned_job(job_id, email, session)
+    pdf_bytes = await asyncio.to_thread(storage.download_bytes, job.pdf_key)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{job.filename}"'},
+    )
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)

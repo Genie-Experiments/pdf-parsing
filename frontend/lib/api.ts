@@ -8,7 +8,7 @@
  * On 401 / 403, the client redirects to /login.
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+export const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
 
@@ -20,6 +20,7 @@ export interface Job {
   created_at: string;
   updated_at: string;
   error_message?: string;
+  current_step: number;
 }
 
 export interface JobResult {

@@ -2,9 +2,9 @@
 # ─── Stage 1: build ───────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm install
 COPY . .
 # NEXT_PUBLIC_* vars are compiled into the JS bundle at build time.
 # This image is environment-specific — pass the correct URL when building:

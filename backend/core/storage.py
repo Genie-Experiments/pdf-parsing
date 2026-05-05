@@ -127,6 +127,15 @@ def object_exists(object_name: str) -> bool:
 def presigned_url(object_name: str, expires_seconds: int = 3600) -> str:
     from datetime import timedelta
 
-    return _client().presigned_get_object(
+    url = _client().presigned_get_object(
         settings.minio_bucket, object_name, expires=timedelta(seconds=expires_seconds)
     )
+    # Rewrite internal hostname (e.g. "minio:9000") to the browser-accessible one.
+    public = settings.minio_public_endpoint or settings.minio_endpoint
+    if public != settings.minio_endpoint:
+        url = url.replace(
+            f"://{settings.minio_endpoint}/",
+            f"://{public}/",
+            1,
+        )
+    return url

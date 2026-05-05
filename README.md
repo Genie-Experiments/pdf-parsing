@@ -16,7 +16,7 @@ pdf-parsing/
 │   └── README.md
 ├── backend/            FastAPI API + ARQ worker
 │   └── README.md
-├── frontend/           Next.js 15 web application
+├── frontend/           Next.js 16 web application
 │   └── README.md
 ├── docker-compose.yml  Full-stack orchestration
 ├── Makefile            Convenience commands
@@ -162,10 +162,64 @@ make docker-up
 | http://localhost:8000/docs | Swagger UI |
 | http://localhost:9001 | MinIO console |
 
+### GPU Support (NVIDIA) — Docker
+
+The worker image ships with CPU-only PyTorch by default. To enable GPU inference on a server with an NVIDIA card:
+
+**1. Server prerequisites**
+
+- NVIDIA drivers installed (`nvidia-smi` should return output)
+- [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed and Docker configured:
+  ```bash
+  nvidia-ctk runtime configure --runtime=docker
+  sudo systemctl restart docker
+  ```
+
+**2. Grant the worker container GPU access**
+
+In `docker-compose.yml`, under the `worker` service, add a `reservations` block inside `deploy.resources`:
+
+```yaml
+worker:
+  deploy:
+    resources:
+      limits:
+        cpus: "4"
+        memory: 8G
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+```
+
+**3. Install CUDA PyTorch in the worker image**
+
+In `backend/Dockerfile.worker`, replace the `uv sync` step with:
+
+```dockerfile
+ARG CUDA_VERSION=cu124
+RUN --mount=type=cache,target=/root/.cache/uv \
+    cd backend && uv sync --frozen --no-dev --no-install-project --extra ml && \
+    uv pip install torch torchvision \
+      --index-url https://download.pytorch.org/whl/${CUDA_VERSION} \
+      --force-reinstall
+```
+
+`cu124` matches CUDA 12.4 — confirm your driver version with `nvidia-smi` and adjust if needed (`cu121`, `cu118`, etc.).
+
+**4. Build and start**
+
+```bash
+docker compose build worker
+docker compose up -d
+```
+
+> **Note:** The pipeline's standalone CLI also supports GPU — see the GPU note under [Make Commands](#make-commands).
+
 ### Local Development (Docker for Infra only)
 
 **Prerequisites:** Python 3.12 + uv, Node.js 22+
-
 
 **backend/.env** — set these for local dev to skip auth and quota:
 ```
@@ -188,7 +242,7 @@ docker compose up postgres redis minio -d
 make setup
 
 # 3. Apply DB migrations
-cd backend && uv run alembic upgrade head && cd ..
+make db-migrate
 
 # 4. Start each service in a separate terminal
 make dev-api        # FastAPI on :8000
@@ -226,6 +280,7 @@ make dev-frontend   # Next.js on :3000
 | `make dev-pipeline DATA_DIR=<path>` | Run pipeline CLI |
 | `make format` | Auto-fix formatting (pipeline + backend) |
 | `make lint` | ruff + pylint (pipeline + backend) |
+| `make db-migrate` | Apply pending Alembic migrations |
 | `make dev-reset` | Wipe Postgres, Redis, and MinIO volumes; restart infra; re-apply migrations |
 | `make docker-up` | Build and start all Docker services |
 | `make docker-down` | Stop all Docker services |

@@ -14,6 +14,11 @@ class Settings(BaseSettings):
 
     # ── MinIO / S3 ────────────────────────────────────────────────────────────
     minio_endpoint: str = "localhost:9000"
+    # Public hostname used in presigned URLs returned to browsers.
+    # In Docker, minio_endpoint is the internal service name (minio:9000) which
+    # browsers can't resolve. Set this to the externally reachable host:port.
+    # Defaults to minio_endpoint when empty (correct for local dev).
+    minio_public_endpoint: str = ""
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "pdf-parser"

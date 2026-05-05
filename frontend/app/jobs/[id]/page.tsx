@@ -7,19 +7,10 @@ import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf-viewer/PdfViewer";
 import { MarkdownPanel } from "@/components/markdown-viewer/MarkdownPanel";
 import { StepProgress } from "@/components/ui/StepProgress";
-import { getJob, getJobResult, getJobPdfUrl, streamLogs, JobResult } from "@/lib/api";
+import { BASE, getJob, getJobResult, JobResult } from "@/lib/api";
 import { AuthGuard } from "@/components/AuthGuard";
 
 type View = "preview" | "raw";
-
-function parseCurrentStep(lines: string[]): number {
-  let max = 0;
-  for (const line of lines) {
-    const m = line.match(/STEP\s+(\d+)/i);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return max;
-}
 
 function downloadMarkdown(markdown: string, filename: string) {
   const blob = new Blob([markdown], { type: "text/markdown" });
@@ -35,10 +26,9 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   const { id } = use(params);
   const router = useRouter();
 
-  const [logs, setLogs] = useState<string[]>([]);
   const [result, setResult] = useState<JobResult | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [view, setView] = useState<View>("preview");
+  const pdfUrl = `${BASE}/jobs/${id}/pdf/content`;
   const { data: job } = useQuery({
     queryKey: ["job", id],
     queryFn: () => getJob(id),
@@ -48,24 +38,6 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
     },
   });
 
-  // Stream logs for step tracking (not displayed)
-  useEffect(() => {
-    if (!job) return;
-    if (job.status === "done" || job.status === "failed" || job.status === "cancelled") return;
-    const stop = streamLogs(
-      id,
-      (line) => setLogs((prev) => [...prev, line]),
-      () => {},
-      () => {},
-    );
-    return stop;
-  }, [id, job?.status]);
-
-  // Fetch original PDF URL as soon as job is known
-  useEffect(() => {
-    if (!job || pdfUrl) return;
-    getJobPdfUrl(id).then(setPdfUrl).catch(() => {});
-  }, [id, job?.id, pdfUrl]);
 
   // Fetch result (markdown) once done
   useEffect(() => {
@@ -74,7 +46,7 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   }, [id, job?.status, result]);
 
   const isRunning = job?.status === "queued" || job?.status === "running";
-  const currentStep = parseCurrentStep(logs);
+  const currentStep = job?.current_step ?? 0;
 
   const handleDownload = useCallback(() => {
     if (result && job) downloadMarkdown(result.markdown, job.filename);
@@ -114,10 +86,10 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
 
           {/* PDF */}
           <div className="flex-1 overflow-hidden">
-            {pdfUrl ? (
+            {job ? (
               <PdfViewer
                 pdfUrl={pdfUrl}
-                lockedPage={job?.page != null ? job.page - 1 : undefined}
+                lockedPage={job.page != null ? job.page - 1 : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
