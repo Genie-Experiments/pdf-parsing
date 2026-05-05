@@ -1,0 +1,54 @@
+[project]
+name = "pdf-pipeline"
+version = "0.1.0"
+description = "10-step PDF parsing pipeline using the Dolphin layout model"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.4",
+    "omegaconf>=2.3.0",
+    "openai>=2.6.1",
+    "opencv-python-headless>=4.11.0.86",
+    "pillow>=12.0.0",
+    "pydantic>=2.12.3",
+    "pydantic-settings>=2.11.0",
+    "pymupdf>=1.26.5",
+    "python-dotenv>=1.2.1",
+]
+
+[project.optional-dependencies]
+# Heavy ML deps only needed by the Dolphin model inference step.
+# demo_page.py uses: torch, transformers, cv2 (headless, already in base), PIL (already in base)
+# CPU (default):  uv sync --extra ml
+# GPU (NVIDIA):   make install-pipeline-gpu  (installs ml then force-reinstalls CUDA torch)
+ml = [
+    "accelerate>=1.11.0",
+    "torch>=2.9.0",
+    "torchvision>=0.24.0",
+    "transformers>=4.57.1",
+]
+
+
+# Expose all sub-packages at the top level so imports like
+# `from config.config import settings` and `from post_processing...`
+# work after `pip install pdf-pipeline` or `uv add pdf-pipeline`.
+[tool.hatch.build.targets.wheel]
+packages = [
+    "config",
+    "utils",
+    "post_processing",
+    "process_pdf_files",
+    "evaluation_scripts",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+    "isort>=8.0.1",
+    "mypy>=1.20.2",
+    "pylint>=4.0.5",
+    "ruff>=0.15.12",
+]

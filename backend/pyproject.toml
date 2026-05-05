@@ -1,0 +1,53 @@
+[project]
+name = "pdf-parser-backend"
+version = "0.1.0"
+description = "FastAPI + ARQ backend for the PDF Parser SaaS"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.4",
+    "arq>=0.27.0",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.135.3",
+    "minio>=7.2.20",
+    "pydantic>=2.12.3",
+    "pydantic-settings>=2.11.0",
+    "python-multipart>=0.0.24",
+    "redis>=5.3.1",
+    "sqlmodel>=0.0.38",
+    "sse-starlette>=3.3.4",
+    "uvicorn[standard]>=0.44.0",
+    "httpx>=0.28.0",
+    "PyJWT>=2.10.0",
+    # Pipeline as a local path dependency — light deps only (no torch/transformers).
+    # The worker image installs the [ml] extra via the backend's own [ml] extra below.
+    "pdf-pipeline",
+    "greenlet>=3.4.0",
+]
+
+[project.optional-dependencies]
+# Worker image only: pulls in the heavy ML stack needed to run Dolphin inference.
+# API image does NOT install this — keeps the API build fast.
+# CPU (default):  uv sync --extra ml
+# GPU (NVIDIA):   make install-gpu  (force-reinstalls CUDA torch after base sync)
+ml = [
+    "pdf-pipeline[ml]",
+]
+
+[tool.uv.sources]
+pdf-pipeline = { path = "../pipeline", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+    "isort>=8.0.1",
+    "mypy>=1.20.2",
+    "pylint>=4.0.5",
+    "ruff>=0.15.12",
+]

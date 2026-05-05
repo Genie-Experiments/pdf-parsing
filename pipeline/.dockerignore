@@ -1,0 +1,25 @@
+.env
+.env.*
+.git
+__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.venv
+logs/
+*.log
+
+# Local data / output dirs
+Data/
+Results/
+data/
+output/
+
+# Model weights (large; bind-mounted at runtime from ./pipeline/hf_model on host)
+hf_model/
+
+# Dev artifacts
+.ruff_cache
+.mypy_cache
+.pytest_cache
+*.egg-info

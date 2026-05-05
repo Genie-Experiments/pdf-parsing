@@ -1,0 +1,226 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PDF Parser — compose (dev + production base)
+#
+# Profiles:
+#   (default)  — traefik + infra + api + worker + frontend
+#   pipeline   — one-shot batch pipeline (docker compose run pipeline)
+#
+# Usage:
+#   Dev  (HTTP, no TLS):   docker compose up -d
+#   Prod (HTTPS, TLS 1.3): docker compose -f docker-compose.yml \
+#                                         -f docker-compose.prod.yml up -d
+#
+# Required env vars (copy .env.example → .env):
+#   POSTGRES_PASSWORD, SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+asyncpg://pdf:${POSTGRES_PASSWORD:-pdf}@postgres:5432/pdf_parser
+  REDIS_URL: redis://redis:6379
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+  MINIO_BUCKET: ${MINIO_BUCKET:-pdf-parser}
+  MINIO_SECURE: "false"
+  SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+  # ── OAuth / SSO ───────────────────────────────────────────────────────────
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  ALLOWED_EMAIL_DOMAIN: ${ALLOWED_EMAIL_DOMAIN:-emumba.com}
+  OAUTH_REDIRECT_BASE_URL: ${OAUTH_REDIRECT_BASE_URL:-http://localhost:8000}
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+  # ── Session cookie ────────────────────────────────────────────────────────
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+  COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+  # ── Dev / quotas (NEVER set DEV_BYPASS_AUTH true in production) ───────────
+  DEV_BYPASS_AUTH: ${DEV_BYPASS_AUTH:-false}
+  BYPASS_QUOTA: ${BYPASS_QUOTA:-false}
+  DEFAULT_PAGE_QUOTA: ${DEFAULT_PAGE_QUOTA:-10}
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+  # ── Pipeline / OpenAI ─────────────────────────────────────────────────────
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL_VISION: ${OPENAI_MODEL_VISION:-gpt-4o-mini}
+  OPENAI_MODEL_TEXT: ${OPENAI_MODEL_TEXT:-gpt-4o-mini}
+  DOLPHIN_MAX_BATCH_SIZE: ${DOLPHIN_MAX_BATCH_SIZE:-16}
+  # ── Worker ────────────────────────────────────────────────────────────────
+  WORKER_MAX_JOBS: ${WORKER_MAX_JOBS:-4}
+  WORKER_JOB_TIMEOUT: ${WORKER_JOB_TIMEOUT:-3600}
+
+x-backend-base: &backend-base
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+
+services:
+  # ── Reverse proxy (HTTP in dev — overridden to HTTPS in docker-compose.prod.yml) ──
+
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      # Single HTTP entrypoint — no TLS, no redirect in dev
+      - "--entrypoints.web.address=:80"
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-WARN}"
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    labels:
+      - "traefik.enable=false"
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pdf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdf}
+      POSTGRES_DB: pdf_parser
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdf -d pdf_parser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+
+  # ── Application ─────────────────────────────────────────────────────────────
+
+  api:
+    <<: *backend-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      <<: *backend-env
+    command: >
+      uvicorn backend.main:app
+        --host 0.0.0.0
+        --port 8000
+        --workers 2
+        --proxy-headers
+        --forwarded-allow-ips='*'
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "traefik.enable=true"
+      # Traefik v3 syntax: multiple path prefixes use || not commas
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN:-localhost}`) && (PathPrefix(`/api/`) || PathPrefix(`/docs`) || PathPrefix(`/openapi.json`) || PathPrefix(`/health`))"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+
+  worker:
+    <<: *backend-base
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    environment:
+      <<: *backend-env
+    command: python -m arq backend.worker.tasks.WorkerSettings
+    volumes:
+      - ./pipeline/hf_model:/app/pipeline/hf_model:ro
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+        NEXT_PUBLIC_DEV_BYPASS_AUTH: ${DEV_BYPASS_AUTH:-false}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+
+  # ── Standalone pipeline (batch mode) ────────────────────────────────────────
+
+  pipeline:
+    profiles: ["pipeline"]
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile
+    environment:
+      DATA_DIRECTORY: /data
+      OUTPUT_DIRECTORY: /output
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PROCESS_CODE_USING_LLM: ${PROCESS_CODE_USING_LLM:-false}
+      PROCESS_FIGURES_USING_LLM: ${PROCESS_FIGURES_USING_LLM:-false}
+    volumes:
+      - ${HOST_DATA_DIR:-./sample_data}:/data:ro
+      - ${HOST_OUTPUT_DIR:-./Results}:/output
+      - ./pipeline/hf_model:/app/hf_model:ro
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

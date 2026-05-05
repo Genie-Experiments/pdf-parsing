@@ -1,0 +1,49 @@
+# Root .dockerignore — used when build context is the repo root (api + worker)
+
+# Version control / IDE
+.git
+.github
+.claude
+**/.DS_Store
+
+# Python bytecode & caches
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/*.egg-info
+**/.eggs
+
+# Virtual envs
+.venv
+**/.venv
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Frontend (not needed in backend/worker images)
+frontend/
+
+# Data / results (can be large; mounted at runtime)
+Data/
+Results/
+logs/
+processed_images_by_dolphin/
+section_hierarchy_pdfs/
+
+# Model weights (large; bind-mounted at runtime, never baked into image)
+pipeline/hf_model/
+
+# Evaluation / notebooks (not needed at runtime)
+evaluation_scripts/
+**/*.ipynb
+**/*.ipynb_checkpoints
+
+# Docs
+*.md
+!README.md

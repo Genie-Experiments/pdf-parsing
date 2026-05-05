@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+# ─── Worker image: includes full ML stack (torch, torchvision, transformers) ──
+# Dolphin runs as a subprocess via sys.executable, so all ML deps must be
+# installed in this venv. Use backend/Dockerfile for the lightweight API image.
+#
+# ─── Stage 1: dependency builder ─────────────────────────────────────────────
+FROM python:3.12-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
+
+WORKDIR /app
+
+COPY pipeline/pyproject.toml pipeline/uv.lock ./pipeline/
+COPY backend/pyproject.toml backend/uv.lock ./backend/
+
+# --extra ml pulls in torch, torchvision, transformers, accelerate, timm.
+# The BuildKit cache means subsequent builds only download changed packages.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    cd backend && uv sync --frozen --no-dev --no-install-project --extra ml
+
+# ─── Stage 2: runtime image ───────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1 libglib2.0-0 libgomp1 tini \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash appuser
+
+WORKDIR /app
+
+COPY --from=builder --link --chown=appuser:appuser /app/backend/.venv ./backend/.venv
+ENV PATH="/app/backend/.venv/bin:$PATH"
+
+COPY --link --chown=appuser:appuser pipeline/ ./pipeline/
+COPY --link --chown=appuser:appuser backend/ ./backend/
+
+USER appuser
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python", "-m", "arq", "backend.worker.tasks.WorkerSettings"]
