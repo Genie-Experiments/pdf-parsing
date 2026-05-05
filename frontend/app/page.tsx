@@ -189,90 +189,95 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Info + recent jobs grid */}
-        <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Info section */}
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-          {/* Left: pipeline steps + limitations */}
-          <div className="lg:col-span-2 space-y-6">
-            <section className="space-y-3">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                How it works
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {PIPELINE_STEPS.map((step, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-lg border border-gray-200 p-3.5 space-y-1.5 hover:border-indigo-200 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                      <span className="text-xs font-semibold text-gray-800">{step.title}</span>
+            {/* Left: How it works + Limitations — both same width */}
+            <div className="flex-1 min-w-0 space-y-8">
+
+              <section className="space-y-3">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  How it works
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {PIPELINE_STEPS.map((step, i) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-lg border border-gray-200 px-3 py-2.5 space-y-1 hover:border-indigo-200 hover:bg-indigo-50/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 w-4 h-4 rounded-full bg-indigo-50 text-indigo-600 text-[9px] font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-800 leading-tight">{step.title}</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">{step.desc}</p>
                     </div>
-                    <p className="text-xs text-gray-500 leading-relaxed">{step.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
 
-            <section className="space-y-2">
+              <section className="space-y-2">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Limitations
+                </h2>
+                <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  {LIMITATIONS.map((item, i) => (
+                    <div key={i} className="flex gap-2 text-xs text-amber-700">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+            </div>
+
+            {/* Right: Recent jobs sidebar */}
+            <div className="w-full lg:w-64 shrink-0 space-y-3">
               <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Limitations
+                Recent jobs
               </h2>
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 space-y-2.5">
-                {LIMITATIONS.map((item, i) => (
-                  <div key={i} className="flex gap-2 text-xs text-amber-700">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
+              {stats && (
+                <p className="text-[11px] text-gray-400">
+                  <span className="text-green-600 font-medium">{stats.done} done</span>
+                  {" · "}
+                  <span className="text-indigo-500 font-medium">{stats.running} running</span>
+                  {" · "}
+                  <span className="font-medium">{stats.queued} queued</span>
+                  {" jobs"}
+                </p>
+              )}
+              {jobs.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center">
+                  <FileText className="w-6 h-6 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-400">No jobs yet</p>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {jobs.map((job) => {
+                    const meta = statusMeta[job.status];
+                    return (
+                      <li key={job.id}>
+                        <button
+                          onClick={() => router.push(`/jobs/${job.id}`)}
+                          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left"
+                        >
+                          <span className={`shrink-0 w-2 h-2 rounded-full ${meta.dotClass}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-800 truncate">{job.filename}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{meta.label}</p>
+                          </div>
+                          {meta.icon}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
 
-          {/* Right: recent jobs */}
-          <div className="space-y-3">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Recent jobs
-            </h2>
-            {stats && (
-              <p className="text-[11px] text-gray-400">
-                <span className="text-green-600 font-medium">{stats.done} done</span>
-                {" · "}
-                <span className="text-indigo-500 font-medium">{stats.running} running</span>
-                {" · "}
-                <span className="font-medium">{stats.queued} queued</span>
-                {" jobs"}
-              </p>
-            )}
-            {jobs.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center">
-                <FileText className="w-6 h-6 text-gray-300 mx-auto mb-2" />
-                <p className="text-xs text-gray-400">No jobs yet</p>
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {jobs.map((job) => {
-                  const meta = statusMeta[job.status];
-                  return (
-                    <li key={job.id}>
-                      <button
-                        onClick={() => router.push(`/jobs/${job.id}`)}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left"
-                      >
-                        <span className={`shrink-0 w-2 h-2 rounded-full ${meta.dotClass}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-800 truncate">{job.filename}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">{meta.label}</p>
-                        </div>
-                        {meta.icon}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
           </div>
         </div>
       </main>
