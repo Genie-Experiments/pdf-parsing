@@ -1,14 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# PDF Parser — compose (dev + production base)
+# PDF Parser — compose
 #
 # Profiles:
 #   (default)  — traefik + infra + api + worker + frontend
 #   pipeline   — one-shot batch pipeline (docker compose run pipeline)
 #
 # Usage:
-#   Dev  (HTTP, no TLS):   docker compose up -d
-#   Prod (HTTPS, TLS 1.3): docker compose -f docker-compose.yml \
-#                                         -f docker-compose.prod.yml up -d
+#   docker compose up -d
 #
 # Required env vars (copy .env.example → .env):
 #   POSTGRES_PASSWORD, SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
@@ -59,7 +57,7 @@ x-backend-base: &backend-base
       condition: service_healthy
 
 services:
-  # ── Reverse proxy (HTTP in dev — overridden to HTTPS in docker-compose.prod.yml) ──
+  # ── Reverse proxy ──────────────────────────────────────────────────────────────
 
   traefik:
     image: traefik:v3.3
@@ -68,7 +66,6 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
-      # Single HTTP entrypoint — no TLS, no redirect in dev
       - "--entrypoints.web.address=:80"
       - "--log.level=${TRAEFIK_LOG_LEVEL:-WARN}"
     ports:

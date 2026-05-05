@@ -5,7 +5,7 @@
         format lint typecheck check code-quality \
         infra-up infra-down db-migrate dev-reset \
         dev-api dev-worker dev-frontend dev-pipeline dev \
-        certs docker-up docker-down docker-up-tls
+        docker-up docker-down
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 
@@ -145,32 +145,3 @@ docker-up:
 
 docker-down:
 	docker compose down
-
-# ── Local HTTPS (mkcert) ──────────────────────────────────────────────────────
-
-## Generate locally-trusted TLS certificates for localhost using mkcert.
-## Run once after cloning (or after `mkcert -install`).
-##
-## macOS:   brew install mkcert && brew install nss  # nss needed for Firefox
-## Linux:   sudo apt install mkcert
-## Windows: choco install mkcert
-certs:
-	@command -v mkcert >/dev/null 2>&1 || { \
-	  echo "mkcert not found. Install it first:"; \
-	  echo "  macOS:   brew install mkcert && brew install nss"; \
-	  echo "  Linux:   sudo apt install mkcert"; \
-	  echo "  Windows: choco install mkcert"; \
-	  exit 1; }
-	mkcert -install
-	mkdir -p traefik/certs
-	mkcert \
-	  -cert-file traefik/certs/localhost.pem \
-	  -key-file  traefik/certs/localhost-key.pem \
-	  localhost 127.0.0.1 ::1
-	@echo ""
-	@echo "Certificates written to traefik/certs/"
-	@echo "Run 'make docker-up-tls' to start with HTTPS."
-
-## Start all services with local HTTPS (requires 'make certs' first).
-docker-up-tls:
-	docker compose -f docker-compose.yml -f docker-compose.dev-tls.yml up --build
