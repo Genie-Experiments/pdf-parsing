@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, Download, Loader2 } from "lucide-react";
 import { PdfViewer } from "@/components/pdf-viewer/PdfViewer";
 import { MarkdownPanel } from "@/components/markdown-viewer/MarkdownPanel";
 import { StepProgress } from "@/components/ui/StepProgress";
@@ -48,6 +48,26 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   const isRunning = job?.status === "queued" || job?.status === "running";
   const currentStep = job?.current_step ?? 0;
 
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!job) return;
+    const terminal = job.status === "done" || job.status === "failed" || job.status === "cancelled";
+    if (terminal) {
+      setElapsed(Math.round((new Date(job.updated_at).getTime() - new Date(job.created_at).getTime()) / 1000));
+      return;
+    }
+    const start = new Date(job.created_at).getTime();
+    const tick = () => setElapsed(Math.round((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [job?.status, job?.created_at, job?.updated_at]);
+
+  function formatElapsed(s: number) {
+    if (s < 60) return `${s}s`;
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+  }
+
   const handleDownload = useCallback(() => {
     if (result && job) downloadMarkdown(result.markdown, job.filename);
   }, [result, job]);
@@ -82,6 +102,12 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
               {job?.status === "running" && <Loader2 className="w-3 h-3 animate-spin" />}
               {job?.status ?? "…"}
             </span>
+            {job && elapsed > 0 && (
+              <span className="text-xs text-gray-400 shrink-0 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatElapsed(elapsed)}
+              </span>
+            )}
           </div>
 
           {/* PDF */}
