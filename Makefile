@@ -33,12 +33,12 @@ install-pipeline-gpu:
 
 install:
 	cd pipeline && uv sync --extra ml
-	cd backend  && uv sync
+	cd backend  && uv sync --extra ml
 	cd frontend && npm install
 
 install-dev:
 	cd pipeline && uv sync --extra ml --group dev
-	cd backend  && uv sync --group dev
+	cd backend  && uv sync --extra ml --group dev
 	cd frontend && npm install
 
 # Pipeline-only setup — no backend/frontend deps
@@ -57,6 +57,7 @@ clean:
 	find . -type d -name "__pycache__" -not -path "./.git/*" -exec rm -rf {} +
 	find . -type f \( -name "*.pyc" -o -name "*.pyo" \) -not -path "./.git/*" -delete
 	find . -type d -name ".venv" -not -path "./.git/*" -exec rm -rf {} +
+	rm -rf frontend/.next frontend/node_modules frontend/tsconfig.tsbuildinfo
 
 # ── Code Quality ───────────────────────────────────────────────────────────────
 

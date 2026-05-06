@@ -66,14 +66,12 @@ services:
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.file.filename=/etc/traefik/dynamic.yml"
       - "--entrypoints.web.address=:80"
       - "--log.level=${TRAEFIK_LOG_LEVEL:-WARN}"
     ports:
       - "80:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
     labels:
       - "traefik.enable=false"
 
