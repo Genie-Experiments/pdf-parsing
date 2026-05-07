@@ -10,9 +10,9 @@ export interface JobConfig {
 }
 
 const ALL_SEGMENTS = [
-  { id: "code", label: "Code blocks" },
-  { id: "tab",  label: "Tables" },
-  { id: "fig",  label: "Figures" },
+  { id: "tab",  label: "Tables",      available: true  },
+  { id: "code", label: "Code blocks", available: false },
+  { id: "fig",  label: "Figures",     available: false },
 ];
 
 interface Props {
@@ -34,6 +34,15 @@ async function getPdfJs() {
 export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
   const [pageMode, setPageMode] = useState<"all" | "single">("all");
   const [pageNum, setPageNum] = useState("1");
+  const [segments, setSegments] = useState<Set<string>>(new Set(["tab"]));
+
+  function toggleSegment(id: string) {
+    setSegments(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   const pdfDocRef = useRef<any>(null);
   const [docReady, setDocReady] = useState(false);
@@ -122,7 +131,7 @@ export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
 
   function handleSubmit() {
     const page = pageMode === "single" ? parseInt(pageNum, 10) : undefined;
-    onSubmit({ file, page, segmentsToRefine: [] });
+    onSubmit({ file, page, segmentsToRefine: [...segments] });
   }
 
   const sizeKb = (file.size / 1024).toFixed(0);
@@ -218,31 +227,37 @@ export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
         </div>
       </div>
 
-      {/* Segments to refine — grayed out, coming soon */}
+      {/* Segments to refine */}
       <div className="space-y-2.5">
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
-            Refine segments
-          </p>
-          <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">
-            Coming soon
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-4 opacity-40 pointer-events-none">
-          {ALL_SEGMENTS.map(({ id, label }) => (
-            <label key={id} className="flex items-center gap-2 select-none cursor-not-allowed">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Refine segments
+        </p>
+        <div className="flex flex-wrap gap-4">
+          {ALL_SEGMENTS.map(({ id, label, available }) => (
+            <label
+              key={id}
+              className={[
+                "flex items-center gap-2 select-none",
+                available ? "cursor-pointer" : "cursor-not-allowed opacity-40",
+              ].join(" ")}
+            >
               <input
                 type="checkbox"
-                disabled
-                readOnly
-                checked={false}
+                disabled={!available}
+                checked={available && segments.has(id)}
+                onChange={() => available && toggleSegment(id)}
                 className="w-3.5 h-3.5"
               />
               <span className="text-sm text-gray-700">{label}</span>
+              {!available && (
+                <span className="text-[10px] bg-gray-100 text-gray-400 px-1 py-0.5 rounded font-medium leading-none">
+                  soon
+                </span>
+              )}
             </label>
           ))}
         </div>
-        <p className="text-xs text-gray-300">
+        <p className="text-xs text-gray-400">
           Selected segments will be post-processed for accuracy.
         </p>
       </div>

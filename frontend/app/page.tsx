@@ -128,7 +128,7 @@ export default function HomePage() {
                 className="object-contain self-center"
                 style={{ display: "block" }}
               />
-              <h1 className="text-2xl font-bold text-gray-800 tracking-tight self-center mt-[20px]">PDF Parsing Engine</h1>
+              <h1 className="text-2xl font-bold text-gray-800 tracking-tight self-center mt-[20px]">GenieParse</h1>
             </div>
 
             <AnimatePresence mode="wait">
@@ -162,7 +162,7 @@ export default function HomePage() {
 
             {stats && (
               <p className="text-[11px] text-center text-gray-400">
-                <span className="text-black-600 font-medium">The engine has processed </span>
+                <span className="text-black-600 font-medium">GenieParse has got </span>
                 {" · "}
                 <span className="text-green-600 font-medium">{stats.done} done</span>
                 {" · "}
@@ -172,7 +172,8 @@ export default function HomePage() {
                 {stats.failed > 0 && (
                   <>{" · "}<span className="text-red-400 font-medium">{stats.failed} failed</span></>
                 )}
-                <span className="text-black-600 font-medium"> jobs</span>
+                {" · "}
+                <span className="text-black-600 font-medium"> jobs in total</span>
               </p>
             )}
 

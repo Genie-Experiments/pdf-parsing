@@ -27,7 +27,7 @@ export default function LoginPage() {
             className="object-contain self-center"
             style={{ display: "block" }}
           />
-          <h1 className="text-2xl font-bold text-gray-800 tracking-tight self-center mt-[20px] whitespace-nowrap">PDF Parsing Engine</h1>
+          <h1 className="text-2xl font-bold text-gray-800 tracking-tight self-center mt-[20px] whitespace-nowrap">GenieParse</h1>
         </div>
 
         {/* Subtitle */}
