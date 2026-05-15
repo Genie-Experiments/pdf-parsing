@@ -81,7 +81,7 @@ async def create_job(
     if len(chunk) > settings.max_upload_bytes:
         raise HTTPException(
             status_code=413,
-            detail=f"File exceeds the {settings.max_upload_bytes // (1024 * 1024)} MB limit.",
+            detail=f"File exceeds the {settings.max_upload_bytes / (1024 * 1024):.0f} MB limit.",
         )
     pdf_bytes = chunk
 
