@@ -32,12 +32,12 @@ RUN useradd --create-home --shell /bin/bash appuser
 
 WORKDIR /app
 
-COPY --from=builder --link --chown=appuser:appuser /app/backend/.venv ./backend/.venv
+COPY --from=builder --chown=appuser:appuser /app/backend/.venv ./backend/.venv
 ENV PATH="/app/backend/.venv/bin:$PATH" \
     PYTHONPATH="/app/backend:/app/pipeline"
 
-COPY --link --chown=appuser:appuser pipeline/ ./pipeline/
-COPY --link --chown=appuser:appuser backend/ ./backend/
+COPY --chown=appuser:appuser pipeline/ ./pipeline/
+COPY --chown=appuser:appuser backend/ ./backend/
 
 USER appuser
 
