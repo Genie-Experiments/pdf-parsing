@@ -185,11 +185,14 @@ def log_file_processing(file_path: str, logger: logging.Logger = None) -> None:
     if logger is None:
         logger = get_logger("file-processor")
 
-    relative_path = (
-        str(Path(file_path).relative_to(Path.cwd()))
-        if Path(file_path).is_absolute()
-        else file_path
-    )
+    try:
+        relative_path = (
+            str(Path(file_path).relative_to(Path.cwd()))
+            if Path(file_path).is_absolute()
+            else file_path
+        )
+    except ValueError:
+        relative_path = file_path
     logger.info("Processing: %s", relative_path)
 
 

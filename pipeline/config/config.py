@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).parent.parent / ".env"
@@ -15,13 +14,6 @@ class Settings(BaseSettings):
     # Pipeline run control
     resume: bool = False
     start_from_step: int = 1
-
-    # Flags
-    process_code_using_llm: bool = False
-    process_figures_using_llm: bool = False
-    segments_to_refine: List[str] = Field(
-        default_factory=lambda: ["code", "fig", "tab"]
-    )
 
     # OpenAI models
     openai_api_key: Optional[str] = None

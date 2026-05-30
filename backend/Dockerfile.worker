@@ -39,6 +39,9 @@ ENV PATH="/app/backend/.venv/bin:$PATH" \
 COPY --chown=appuser:appuser pipeline/ ./pipeline/
 COPY --chown=appuser:appuser backend/ ./backend/
 
+# Ensure html-to-markdown binary is executable
+RUN chmod +x /app/pipeline/html-to-markdown/bin/html-to-markdown_Linux_x86_64 2>/dev/null || true
+
 USER appuser
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

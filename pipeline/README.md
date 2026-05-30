@@ -47,9 +47,7 @@ Key variables:
 | `OUTPUT_DIRECTORY` | `./Results` | Where pipeline writes output |
 | `RESUME` | `false` | Skip steps whose outputs already exist |
 | `START_FROM_STEP` | `1` | Start from step N (1–10). Use `2` to skip Dolphin re-inference. |
-| `PROCESS_CODE_USING_LLM` | `false` | GPT-4o Vision on code blocks |
-| `PROCESS_FIGURES_USING_LLM` | `false` | GPT-4o Vision on figures |
-| `OPENAI_API_KEY` | — | Required only if either LLM flag is `true` |
+| `OPENAI_API_KEY` | — | Required only if `--process-code-llm` or `--process-figures-llm` is passed |
 | `DOLPHIN_MAX_BATCH_SIZE` | `16` | Increase for more RAM/VRAM |
 
 ## Run
@@ -74,6 +72,15 @@ START_FROM_STEP=2 uv run python main.py --data-dir /path/to/pdfs
 
 # Resume a partial run — skip steps whose outputs already exist
 RESUME=true uv run python main.py --data-dir /path/to/pdfs
+
+# Refine tables only
+uv run python main.py --pdf-file /path/to/doc.pdf --refine-tables
+
+# Refine all three segment types
+uv run python main.py --pdf-file /path/to/doc.pdf --refine-tables --refine-code --refine-figures
+
+# Refine code with LLM, and figures with LLM
+uv run python main.py --pdf-file /path/to/doc.pdf --refine-code --refine-figures --process-code-llm --process-figures-llm
 ```
 
 ## Output

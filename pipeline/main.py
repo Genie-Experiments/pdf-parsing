@@ -39,9 +39,9 @@ MODEL_PATH = str(_PIPELINE_ROOT / "hf_model")
 
 # User-configurable settings
 OUTPUT_DIRECTORY = settings.output_directory
-PROCESS_CODE_USING_LLM = settings.process_code_using_llm
-PROCESS_FIGURES_USING_LLM = settings.process_figures_using_llm
-SEGMENTS_TO_REFINE = settings.segments_to_refine
+PROCESS_CODE_USING_LLM = False
+PROCESS_FIGURES_USING_LLM = False
+SEGMENTS_TO_REFINE = []
 RESUME = settings.resume
 START_FROM_STEP = settings.start_from_step
 DOLPHIN_MAX_BATCH_SIZE = settings.dolphin_max_batch_size
@@ -143,10 +143,42 @@ if __name__ == "__main__":
         metavar="N",
         help="Extract and process only page N of --pdf-file (1-indexed). Requires --pdf-file.",
     )
+    parser.add_argument(
+        "--refine-tables",
+        action="store_true",
+        help="Refine table segments",
+    )
+    parser.add_argument(
+        "--refine-code",
+        action="store_true",
+        help="Refine code segments",
+    )
+    parser.add_argument(
+        "--refine-figures",
+        action="store_true",
+        help="Refine figure segments",
+    )
+    parser.add_argument(
+        "--process-code-llm",
+        action="store_true",
+        help="Run GPT-4o Vision on code blocks",
+    )
+    parser.add_argument(
+        "--process-figures-llm",
+        action="store_true",
+        help="Run GPT-4o Vision on figures",
+    )
     args = parser.parse_args()
 
     if args.page is not None and args.pdf_file is None:
         parser.error("--page requires --pdf-file")
+
+    SEGMENTS_TO_REFINE = [
+        seg for seg, enabled in [("tab", args.refine_tables), ("code", args.refine_code), ("fig", args.refine_figures)]
+        if enabled
+    ]
+    PROCESS_CODE_USING_LLM = args.process_code_llm
+    PROCESS_FIGURES_USING_LLM = args.process_figures_llm
 
     DATA_DIRECTORY, _tmp_dir = _prepare_input(args.data_dir, args.pdf_file, args.page)
 
