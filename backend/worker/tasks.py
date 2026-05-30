@@ -97,6 +97,9 @@ async def run_pipeline(ctx: dict, job_id: str) -> None:
             result["dolphin_json_bytes"],
             "application/json",
         )
+        for fig_name, fig_bytes in result.get("figure_files", {}).items():
+            fig_key = f"jobs/{job_id}/output/figures/{fig_name}"
+            await asyncio.to_thread(storage.upload_bytes, fig_key, fig_bytes, "image/png")
 
         # ── mark done ────────────────────────────────────────────────────────
         async with AsyncSessionLocal() as session:

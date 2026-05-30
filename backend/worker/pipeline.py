@@ -258,9 +258,19 @@ def run_pipeline_for_job(
                     )
                 json_path = candidates[0]
 
+            # Collect figure image files from the markdown's figures/ subdirectory
+            _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+            figures_dir = md_path.parent / "figures"
+            figure_files: dict[str, bytes] = {}
+            if figures_dir.is_dir():
+                for fig in figures_dir.iterdir():
+                    if fig.is_file() and fig.suffix.lower() in _IMAGE_SUFFIXES:
+                        figure_files[fig.name] = fig.read_bytes()
+
             return {
                 "markdown_bytes": md_path.read_bytes(),
                 "dolphin_json_bytes": json_path.read_bytes(),
+                "figure_files": figure_files,
             }
 
     finally:

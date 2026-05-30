@@ -281,6 +281,8 @@ async def get_result(
     session: AsyncSession = Depends(db_session),
     email: str = Depends(require_auth),
 ) -> dict:
+    import re
+
     job = await _get_owned_job(job_id, email, session)
     if job.status != JobStatus.done:
         raise HTTPException(status_code=409, detail=f"Job is {job.status}, not done.")
@@ -288,8 +290,27 @@ async def get_result(
     markdown = (
         await asyncio.to_thread(storage.download_bytes, job.markdown_key)
     ).decode("utf-8")
-    pdf_url = await asyncio.to_thread(storage.presigned_url, job.pdf_key)
 
+    # Rewrite relative figure references with fresh presigned URLs so images render
+    figure_filenames = set(re.findall(r"!\[[^\]]*\]\(figures/([^)]+)\)", markdown))
+    figure_urls: dict[str, str] = {}
+    for filename in figure_filenames:
+        fig_key = f"jobs/{job_id}/output/figures/{filename}"
+        try:
+            figure_urls[filename] = await asyncio.to_thread(
+                storage.presigned_url, fig_key
+            )
+        except Exception:
+            pass
+
+    def _replace_figure(m: re.Match) -> str:
+        alt, filename = m.group(1), m.group(2)
+        url = figure_urls.get(filename, f"figures/{filename}")
+        return f"![{alt}]({url})"
+
+    markdown = re.sub(r"!\[([^\]]*)\]\(figures/([^)]+)\)", _replace_figure, markdown)
+
+    pdf_url = await asyncio.to_thread(storage.presigned_url, job.pdf_key)
     return {"markdown": markdown, "pdf_url": pdf_url}
 
 
