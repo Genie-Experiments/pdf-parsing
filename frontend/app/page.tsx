@@ -197,7 +197,10 @@ export default function HomePage() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.18 }}
                 >
-                  <UploadZone onFile={setSelectedFile} disabled={upload.isPending} />
+                  <UploadZone
+                    onFile={setSelectedFile}
+                    disabled={upload.isPending || (!!quota && !quota.bypassed && quota.pages_remaining === 0)}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
