@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY: submodules model \
         install-pipeline install-pipeline-gpu install install-dev \
         setup-pipeline setup-pipeline-gpu setup \
@@ -103,11 +105,11 @@ dev-reset:
 	docker compose up -d postgres redis minio
 	@echo "Waiting for Postgres to be ready…"
 	@until docker compose exec postgres pg_isready -U pdf -d pdf_parser -q 2>/dev/null; do sleep 1; done
-	cd backend && PYTHONPATH=.. uv run alembic upgrade head
+	set -a && source .env && set +a && cd backend && PYTHONPATH=.. uv run alembic upgrade head
 
 # Run Alembic migrations (apply all pending upgrades)
 db-migrate:
-	cd backend && PYTHONPATH=.. uv run alembic upgrade head
+	set -a && source .env && set +a && cd backend && PYTHONPATH=.. uv run alembic upgrade head
 
 # ── Local dev servers ─────────────────────────────────────────────────────────
 
