@@ -75,7 +75,7 @@ export function UploadZone({ onFile, disabled }: Props) {
         {sizeError ? (
           <p className="text-xs text-red-500">File exceeds the 1 MB limit.</p>
         ) : (
-          <p className="text-xs text-gray-400">or click to browse · PDF files only · max 1 MB</p>
+          <p className="text-xs text-gray-400">or click to browse · PDF files only · max 1 MB · max 10 pages</p>
         )}
       </div>
     </label>
