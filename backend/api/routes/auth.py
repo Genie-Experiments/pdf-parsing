@@ -18,8 +18,9 @@ import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_auth
+from api.deps import db_session, require_auth
 from core import auth as auth_utils
 from core.config import settings
 
@@ -173,6 +174,27 @@ async def oauth_callback(request: Request, code: str, state: str) -> RedirectRes
 async def me(email: str = Depends(require_auth)) -> dict:
     """Returns the authenticated user's profile. Used by the frontend to validate session."""
     return {"email": email}
+
+
+@router.get("/quota", summary="Return the current user's page quota")
+async def quota(
+    email: str = Depends(require_auth),
+    session: AsyncSession = Depends(db_session),
+) -> dict:
+    from models.user_quota import UserQuota
+
+    if settings.bypass_quota:
+        return {"bypassed": True, "pages_used": 0, "page_quota": 0, "pages_remaining": 0}
+
+    q = await session.get(UserQuota, email)
+    pages_used = q.pages_used if q else 0
+    page_quota = q.page_quota if q else settings.default_page_quota
+    return {
+        "bypassed": False,
+        "pages_used": pages_used,
+        "page_quota": page_quota,
+        "pages_remaining": max(0, page_quota - pages_used),
+    }
 
 
 @router.post(

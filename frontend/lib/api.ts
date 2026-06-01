@@ -58,6 +58,19 @@ export async function getMe(): Promise<{ email: string }> {
   return res.json();
 }
 
+export interface UserQuota {
+  bypassed: boolean;
+  pages_used: number;
+  page_quota: number;
+  pages_remaining: number;
+}
+
+export async function getQuota(): Promise<UserQuota> {
+  const res = await apiFetch(`${BASE}/auth/quota`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function logout(): Promise<void> {
   await fetch(`${BASE}/auth/logout`, { method: "POST", credentials: "include" });
 }

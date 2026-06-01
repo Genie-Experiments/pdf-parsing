@@ -9,7 +9,7 @@ import Image from "next/image";
 import { UploadZone } from "@/components/ui/UploadZone";
 import { JobOptions, JobConfig } from "@/components/ui/JobOptions";
 import { AuthGuard } from "@/components/AuthGuard";
-import { uploadPdf, listJobs, getJobStats, getMe, logout, Job, JobStatus, JobStats } from "@/lib/api";
+import { uploadPdf, listJobs, getJobStats, getMe, getQuota, logout, Job, JobStatus, JobStats, UserQuota } from "@/lib/api";
 
 const statusMeta: Record<JobStatus, { icon: React.ReactNode; label: string; dotClass: string }> = {
   queued:    { icon: <Clock className="w-3.5 h-3.5 text-gray-400" />,                   label: "Queued",    dotClass: "bg-gray-300" },
@@ -79,6 +79,12 @@ export default function HomePage() {
     refetchInterval: 10000,
   });
 
+  const { data: quota } = useQuery<UserQuota>({
+    queryKey: ["quota"],
+    queryFn: getQuota,
+    refetchInterval: 30000,
+  });
+
   const upload = useMutation({
     mutationFn: ({ file, page, segmentsToRefine }: JobConfig) =>
       uploadPdf(file, { page, segmentsToRefine }),
@@ -104,9 +110,44 @@ export default function HomePage() {
               <User className="w-4 h-4" />
             </button>
             {profileOpen && (
-              <div className="absolute right-0 mt-1 w-52 bg-white rounded-lg border border-gray-200 shadow-lg py-1 z-50">
+              <div className="absolute right-0 mt-1 w-56 bg-white rounded-lg border border-gray-200 shadow-lg py-1 z-50">
                 {userEmail && (
                   <p className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100 truncate">{userEmail}</p>
+                )}
+                {quota && (
+                  <div className="px-3 py-2.5 border-b border-gray-100 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Page quota</span>
+                      {quota.bypassed ? (
+                        <span className="text-[10px] text-indigo-500 font-medium">Unlimited</span>
+                      ) : (
+                        <span className="text-[10px] text-gray-500">
+                          {quota.pages_used} / {quota.page_quota}
+                        </span>
+                      )}
+                    </div>
+                    {!quota.bypassed && (
+                      <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${
+                            quota.pages_remaining === 0
+                              ? "bg-red-400"
+                              : quota.pages_used / quota.page_quota > 0.8
+                              ? "bg-amber-400"
+                              : "bg-indigo-400"
+                          }`}
+                          style={{ width: `${Math.min(100, (quota.pages_used / quota.page_quota) * 100)}%` }}
+                        />
+                      </div>
+                    )}
+                    {!quota.bypassed && (
+                      <p className="text-[10px] text-gray-400">
+                        {quota.pages_remaining === 0
+                          ? "No pages remaining"
+                          : `${quota.pages_remaining} page${quota.pages_remaining === 1 ? "" : "s"} remaining`}
+                      </p>
+                    )}
+                  </div>
                 )}
                 <button
                   onClick={handleLogout}

@@ -252,6 +252,32 @@ make dev-frontend   # Next.js on :3000
 
 ---
 
+## User Quota Management
+
+Each user gets a page quota on first submission (default: `DEFAULT_PAGE_QUOTA`, set in `backend/.env`). Pages are consumed at submission time; failed jobs do not refund quota.
+
+**Set or update quota for a specific user:**
+
+```bash
+make set-quota EMAIL=user@example.com QUOTA=500
+```
+
+**Via raw SQL (if services are already running):**
+
+```bash
+docker compose exec postgres psql -U pdf -d pdf_parser \
+  -c "UPDATE user_quota SET page_quota = 500 WHERE email = 'user@example.com';"
+```
+
+**Disable quota enforcement entirely (dev / internal use):**
+
+In `backend/.env`:
+```
+BYPASS_QUOTA=true
+```
+
+---
+
 ## Pipeline Steps
 
 | Step | Description |
@@ -285,6 +311,7 @@ make dev-frontend   # Next.js on :3000
 | `make docker-up` | Build and start all Docker services |
 | `make docker-down` | Stop all Docker services |
 | `make clean` | Remove `__pycache__`, `.pyc`/`.pyo`, `.venv` dirs |
+| `make set-quota EMAIL=<email> QUOTA=<n>` | Set page quota for a user |
 
 > **GPU note:** CUDA is not available on Apple Silicon — use `make setup-pipeline` (MPS is included in the default PyTorch build). For NVIDIA on Linux/Windows, use `make setup-pipeline-gpu`. Confirm your CUDA version with `nvidia-smi`; default is `cu124`.
 

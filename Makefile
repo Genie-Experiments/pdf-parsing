@@ -7,7 +7,8 @@ SHELL := /bin/bash
         format lint typecheck check code-quality \
         infra-up infra-down db-migrate dev-reset \
         dev-api dev-worker dev-frontend dev-pipeline dev \
-        docker-up docker-down
+        docker-up docker-down \
+        set-quota
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 
@@ -148,3 +149,16 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+# ── Admin ──────────────────────────────────────────────────────────────────────
+
+## Set page quota for a user. EMAIL and QUOTA are required.
+##   make set-quota EMAIL=user@example.com QUOTA=500
+set-quota:
+	@if [ -z "$(EMAIL)" ] || [ -z "$(QUOTA)" ]; then \
+	  echo "Usage: make set-quota EMAIL=user@example.com QUOTA=500"; exit 1; \
+	fi
+	docker compose exec postgres psql -U pdf -d pdf_parser \
+	  -c "INSERT INTO user_quota (email, page_quota, pages_used) VALUES ('$(EMAIL)', $(QUOTA), 0) \
+	      ON CONFLICT (email) DO UPDATE SET page_quota = $(QUOTA);"
+	@echo "Quota for $(EMAIL) set to $(QUOTA) pages."
