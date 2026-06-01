@@ -309,6 +309,10 @@ async def get_result(
 
     markdown = re.sub(r"!\[([^\]]*)\]\(figures/([^)]+)\)", _replace_figure, markdown)
 
+    # Convert internal page break markers to visible HR tags at serve time.
+    # Pipeline keeps <!-- page_break_N --> throughout; downstream steps (OCR, header removal) are unaffected.
+    markdown = re.sub(r"<!--\s*page_break_\d+\s*-->", "\n\n<hr />\n\n", markdown)
+
     pdf_url = await asyncio.to_thread(storage.presigned_url, job.pdf_key)
     return {"markdown": markdown, "pdf_url": pdf_url}
 
