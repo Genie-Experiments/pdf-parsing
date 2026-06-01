@@ -276,13 +276,11 @@ export default function HomePage() {
                 <ul className="space-y-2">
                   {jobs.map((job) => {
                     const meta = statusMeta[job.status];
-                    const isOwn = job.user_email === userEmail;
-                    const clickable = scope === "mine" || isOwn;
                     return (
                       <li key={job.id}>
                         <button
-                          onClick={() => clickable ? router.push(`/jobs/${job.id}`) : undefined}
-                          className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border border-gray-200 transition-colors text-left ${clickable ? "hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer" : "cursor-default opacity-70"}`}
+                          onClick={() => router.push(`/jobs/${job.id}`)}
+                          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border border-gray-200 transition-colors text-left hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer"
                         >
                           <span className={`shrink-0 w-2 h-2 rounded-full ${meta.dotClass}`} />
                           <div className="flex-1 min-w-0">

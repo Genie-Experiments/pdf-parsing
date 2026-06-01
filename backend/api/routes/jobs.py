@@ -38,10 +38,17 @@ async def _get_owned_job(
     email: str,
     session: AsyncSession,
 ) -> Job:
-    """Fetch a job by ID and verify ownership. Returns 404 for missing or unowned jobs
-    (avoids leaking the existence of other users' jobs)."""
+    """Fetch a job and verify ownership. Used for mutating operations (delete)."""
     job = await session.get(Job, job_id)
     if not job or job.user_email != email:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return job
+
+
+async def _get_job(job_id: uuid.UUID, session: AsyncSession) -> Job:
+    """Fetch any job by ID regardless of owner. Returns 404 if not found."""
+    job = await session.get(Job, job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
     return job
 
@@ -232,7 +239,7 @@ async def get_job(
     session: AsyncSession = Depends(db_session),
     email: str = Depends(require_auth),
 ) -> JobRead:
-    job = await _get_owned_job(job_id, email, session)
+    job = await _get_job(job_id, session)
     redis = aioredis.from_url(settings.redis_url)
     try:
         step_val = await redis.get(f"job:{job_id}:step")
@@ -246,7 +253,7 @@ async def get_job(
 async def stream_logs(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(db_session),
-    email: str = Depends(require_auth),
+    _: str = Depends(require_auth),
 ) -> EventSourceResponse:
     """
     SSE endpoint. The worker publishes log lines to Redis channel
@@ -254,8 +261,7 @@ async def stream_logs(
     - Sends automatic pings every 15 s to keep proxies from closing the connection.
     - Times out after `sse_timeout_seconds` if no sentinel is received (e.g. worker crash).
     """
-    # Verify ownership before opening the SSE stream
-    await _get_owned_job(job_id, email, session)
+    await _get_job(job_id, session)
 
     async def _generate() -> AsyncGenerator[dict, None]:
         redis = aioredis.from_url(settings.redis_url)
@@ -286,11 +292,11 @@ async def get_result(
     request: Request,
     job_id: uuid.UUID,
     session: AsyncSession = Depends(db_session),
-    email: str = Depends(require_auth),
+    _: str = Depends(require_auth),
 ) -> dict:
     import re
 
-    job = await _get_owned_job(job_id, email, session)
+    job = await _get_job(job_id, session)
     if job.status != JobStatus.done:
         raise HTTPException(status_code=409, detail=f"Job is {job.status}, not done.")
 
@@ -317,10 +323,10 @@ async def get_result(
 async def get_pdf_url(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(db_session),
-    email: str = Depends(require_auth),
+    _: str = Depends(require_auth),
 ) -> dict:
     """Return a presigned URL for the original uploaded PDF (any job status)."""
-    job = await _get_owned_job(job_id, email, session)
+    job = await _get_job(job_id, session)
     pdf_url = await asyncio.to_thread(storage.presigned_url, job.pdf_key)
     return {"pdf_url": pdf_url}
 
@@ -329,12 +335,12 @@ async def get_pdf_url(
 async def stream_pdf(
     job_id: uuid.UUID,
     session: AsyncSession = Depends(db_session),
-    email: str = Depends(require_auth),
+    _: str = Depends(require_auth),
 ):
     """Stream the original PDF bytes through the API (avoids MinIO CORS issues)."""
     from fastapi.responses import Response
 
-    job = await _get_owned_job(job_id, email, session)
+    job = await _get_job(job_id, session)
     pdf_bytes = await asyncio.to_thread(storage.download_bytes, job.pdf_key)
     return Response(
         content=pdf_bytes,
@@ -348,13 +354,13 @@ async def stream_figure(
     job_id: uuid.UUID,
     filename: str,
     session: AsyncSession = Depends(db_session),
-    email: str = Depends(require_auth),
+    _: str = Depends(require_auth),
 ):
     """Stream a figure image through the API (keeps MinIO internal)."""
     import mimetypes
     from fastapi.responses import Response
 
-    await _get_owned_job(job_id, email, session)
+    await _get_job(job_id, session)
     fig_key = f"jobs/{job_id}/output/figures/{filename}"
     fig_bytes = await asyncio.to_thread(storage.download_bytes, fig_key)
     content_type = mimetypes.guess_type(filename)[0] or "image/png"
