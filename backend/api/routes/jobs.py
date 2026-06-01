@@ -190,30 +190,30 @@ async def create_job(
 async def list_jobs(
     session: AsyncSession = Depends(db_session),
     email: str = Depends(require_auth),
+    scope: str = "all",
     limit: int = 50,
     offset: int = 0,
 ) -> List[Job]:
-    """Return the authenticated user's jobs, newest first. Max 100 per page."""
+    """Return jobs newest first. scope=all returns all users; scope=mine filters to the caller."""
     limit = min(limit, 100)
-    result = await session.execute(
-        select(Job)
-        .where(Job.user_email == email)
-        .order_by(Job.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = select(Job).order_by(Job.created_at.desc()).limit(limit).offset(offset)
+    if scope == "mine":
+        stmt = stmt.where(Job.user_email == email)
+    result = await session.execute(stmt)
     return result.scalars().all()
 
 
-@router.get("/stats", summary="System-wide job counts by status")
+@router.get("/stats", summary="Job counts by status")
 async def job_stats(
     session: AsyncSession = Depends(db_session),
-    _: str = Depends(require_auth),
+    email: str = Depends(require_auth),
+    scope: str = "all",
 ) -> dict:
-    """Returns total job counts across all users, grouped by status."""
-    rows = await session.execute(
-        select(Job.status, sa_func.count(Job.id)).group_by(Job.status)
-    )
+    """Returns job counts grouped by status. scope=all aggregates all users; scope=mine filters to the caller."""
+    stmt = select(Job.status, sa_func.count(Job.id)).group_by(Job.status)
+    if scope == "mine":
+        stmt = stmt.where(Job.user_email == email)
+    rows = await session.execute(stmt)
     counts: dict[str, int] = {s: 0 for s in ("queued", "running", "done", "failed")}
     for job_status, count in rows.all():
         counts[job_status] = count

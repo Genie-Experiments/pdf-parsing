@@ -45,6 +45,7 @@ export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [scope, setScope] = useState<"mine" | "all">("all");
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,14 +68,14 @@ export default function HomePage() {
   }
 
   const { data: jobs = [] } = useQuery<Job[]>({
-    queryKey: ["jobs"],
-    queryFn: listJobs,
+    queryKey: ["jobs", scope],
+    queryFn: () => listJobs(scope),
     refetchInterval: 5000,
   });
 
   const { data: stats } = useQuery<JobStats>({
-    queryKey: ["job-stats"],
-    queryFn: getJobStats,
+    queryKey: ["job-stats", scope],
+    queryFn: () => getJobStats(scope),
     refetchInterval: 10000,
   });
 
@@ -162,7 +163,7 @@ export default function HomePage() {
 
             {stats && (
               <p className="text-[11px] text-center text-gray-400">
-                <span className="text-black-600 font-medium">GenieParse has got </span>
+                <span className="text-black-600 font-medium">{scope === "all" ? "GenieParse has got" : "You have"} </span>
                 {" · "}
                 <span className="text-green-600 font-medium">{stats.done} done</span>
                 {" · "}
@@ -237,9 +238,25 @@ export default function HomePage() {
 
             {/* Right: Recent jobs sidebar */}
             <div className="w-full lg:w-64 shrink-0 space-y-3">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Recent jobs
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Recent jobs
+                </h2>
+                <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
+                  <button
+                    onClick={() => setScope("mine")}
+                    className={`text-[10px] px-2 py-0.5 rounded transition-colors ${scope === "mine" ? "bg-white shadow-sm text-gray-800 font-medium" : "text-gray-400 hover:text-gray-600"}`}
+                  >
+                    Mine
+                  </button>
+                  <button
+                    onClick={() => setScope("all")}
+                    className={`text-[10px] px-2 py-0.5 rounded transition-colors ${scope === "all" ? "bg-white shadow-sm text-gray-800 font-medium" : "text-gray-400 hover:text-gray-600"}`}
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
               {stats && (
                 <p className="text-[11px] text-gray-400">
                   <span className="text-green-600 font-medium">{stats.done} done</span>
@@ -259,15 +276,20 @@ export default function HomePage() {
                 <ul className="space-y-2">
                   {jobs.map((job) => {
                     const meta = statusMeta[job.status];
+                    const isOwn = job.user_email === userEmail;
+                    const clickable = scope === "mine" || isOwn;
                     return (
                       <li key={job.id}>
                         <button
-                          onClick={() => router.push(`/jobs/${job.id}`)}
-                          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors text-left"
+                          onClick={() => clickable ? router.push(`/jobs/${job.id}`) : undefined}
+                          className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border border-gray-200 transition-colors text-left ${clickable ? "hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer" : "cursor-default opacity-70"}`}
                         >
                           <span className={`shrink-0 w-2 h-2 rounded-full ${meta.dotClass}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-gray-800 truncate">{job.filename}</p>
+                            {scope === "all" && (
+                              <p className="text-[10px] text-indigo-400 truncate">{job.user_email}</p>
+                            )}
                             <p className="text-[10px] text-gray-400 mt-0.5">{meta.label}</p>
                           </div>
                           {meta.icon}

@@ -14,6 +14,7 @@ export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
 
 export interface Job {
   id: string;
+  user_email: string;
   filename: string;
   status: JobStatus;
   page?: number | null;  // null/undefined = full PDF; N = single page (1-indexed)
@@ -80,8 +81,8 @@ export async function uploadPdf(file: File, options?: UploadOptions): Promise<Jo
   return res.json();
 }
 
-export async function listJobs(): Promise<Job[]> {
-  const res = await apiFetch(`${BASE}/jobs`);
+export async function listJobs(scope: "mine" | "all" = "all"): Promise<Job[]> {
+  const res = await apiFetch(`${BASE}/jobs?scope=${scope}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -110,8 +111,8 @@ export async function deleteJob(id: string): Promise<void> {
   if (!res.ok && res.status !== 204) throw new Error(await res.text());
 }
 
-export async function getJobStats(): Promise<JobStats> {
-  const res = await apiFetch(`${BASE}/jobs/stats`);
+export async function getJobStats(scope: "mine" | "all" = "all"): Promise<JobStats> {
+  const res = await apiFetch(`${BASE}/jobs/stats?scope=${scope}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
