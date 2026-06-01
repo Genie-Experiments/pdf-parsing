@@ -283,6 +283,7 @@ async def stream_logs(
 
 @router.get("/{job_id}/result")
 async def get_result(
+    request: Request,
     job_id: uuid.UUID,
     session: AsyncSession = Depends(db_session),
     email: str = Depends(require_auth),
@@ -297,21 +298,13 @@ async def get_result(
         await asyncio.to_thread(storage.download_bytes, job.markdown_key)
     ).decode("utf-8")
 
-    # Rewrite relative figure references with fresh presigned URLs so images render
-    figure_filenames = set(re.findall(r"!\[[^\]]*\]\(figures/([^)]+)\)", markdown))
-    figure_urls: dict[str, str] = {}
-    for filename in figure_filenames:
-        fig_key = f"jobs/{job_id}/output/figures/{filename}"
-        try:
-            figure_urls[filename] = await asyncio.to_thread(
-                storage.presigned_url, fig_key
-            )
-        except Exception:
-            pass
+    # Rewrite relative figure references to the backend proxy endpoint so images
+    # render without exposing MinIO directly to browsers.
+    base = str(request.base_url).rstrip("/")
 
     def _replace_figure(m: re.Match) -> str:
         alt, filename = m.group(1), m.group(2)
-        url = figure_urls.get(filename, f"figures/{filename}")
+        url = f"{base}/api/v1/jobs/{job_id}/figures/{filename}"
         return f"![{alt}]({url})"
 
     markdown = re.sub(r"!\[([^\]]*)\]\(figures/([^)]+)\)", _replace_figure, markdown)
@@ -348,6 +341,24 @@ async def stream_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{job.filename}"'},
     )
+
+
+@router.get("/{job_id}/figures/{filename:path}")
+async def stream_figure(
+    job_id: uuid.UUID,
+    filename: str,
+    session: AsyncSession = Depends(db_session),
+    email: str = Depends(require_auth),
+):
+    """Stream a figure image through the API (keeps MinIO internal)."""
+    import mimetypes
+    from fastapi.responses import Response
+
+    await _get_owned_job(job_id, email, session)
+    fig_key = f"jobs/{job_id}/output/figures/{filename}"
+    fig_bytes = await asyncio.to_thread(storage.download_bytes, fig_key)
+    content_type = mimetypes.guess_type(filename)[0] or "image/png"
+    return Response(content=fig_bytes, media_type=content_type)
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
