@@ -323,6 +323,7 @@ def remove_headers_footers_batch(results_directory: str):
     # Find all JSON files in the results directory (recursively)
     json_files = []
     for root, dirs, files in os.walk(results_directory):
+        dirs[:] = [d for d in dirs if d != "_pipeline"]
         for file in files:
             if file.lower().endswith(".json") and not file.endswith(
                 "_corrections.json"
