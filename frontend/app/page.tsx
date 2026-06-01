@@ -202,6 +202,36 @@ export default function HomePage() {
               )}
             </AnimatePresence>
 
+            {quota && !selectedFile && (
+              <div className="flex items-center gap-2">
+                {quota.bypassed ? (
+                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-red-400 w-full" />
+                  </div>
+                ) : (
+                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${
+                        quota.pages_remaining === 0
+                          ? "bg-red-400"
+                          : quota.pages_used / quota.page_quota > 0.8
+                          ? "bg-amber-400"
+                          : "bg-indigo-400"
+                      }`}
+                      style={{ width: `${Math.min(100, (quota.pages_used / quota.page_quota) * 100)}%` }}
+                    />
+                  </div>
+                )}
+                <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">
+                  {quota.bypassed
+                    ? "Unlimited"
+                    : quota.pages_remaining === 0
+                    ? "No pages remaining"
+                    : `${quota.pages_used} / ${quota.page_quota} pages used`}
+                </span>
+              </div>
+            )}
+
             {stats && (
               <p className="text-[11px] text-center text-gray-400">
                 <span className="text-black-600 font-medium">{scope === "all" ? "GenieParse has got" : "You have"} </span>
