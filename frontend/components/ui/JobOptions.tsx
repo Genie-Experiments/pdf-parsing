@@ -207,13 +207,6 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
             </div>
           </div>
 
-          {quotaExceeded && (
-            <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              You have {quota!.pages_remaining} page{quota!.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {totalPages} pages. Switch to <strong>Single page</strong> to process one page.
-            </p>
-          )}
-
           {/* Thumbnail (right) */}
           {pageMode === "single" && (
             <div className="shrink-0">
@@ -296,6 +289,13 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
           Start Processing →
         </button>
       </div>
+
+      {quotaExceeded && (
+        <p className="flex items-center gap-1.5 text-xs text-amber-600">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          You have {quota!.pages_remaining} page{quota!.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {totalPages} pages. Switch to <strong>Single page</strong> to process one page.
+        </p>
+      )}
     </div>
   );
 }

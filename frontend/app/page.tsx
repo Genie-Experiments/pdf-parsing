@@ -260,7 +260,10 @@ export default function HomePage() {
             )}
             {upload.isError && (
               <p className="text-xs text-center text-red-500">
-                Upload failed: {(upload.error as Error).message}
+                {(() => {
+                  const raw = (upload.error as Error).message;
+                  try { return JSON.parse(raw).detail ?? raw; } catch { return raw; }
+                })()}
               </p>
             )}
           </div>
