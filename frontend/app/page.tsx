@@ -43,6 +43,8 @@ export default function HomePage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileTotalPages, setFileTotalPages] = useState<number | null>(null);
+  const [quotaWarning, setQuotaWarning] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [scope, setScope] = useState<"mine" | "all">("all");
@@ -185,9 +187,11 @@ export default function HomePage() {
                   <JobOptions
                     file={selectedFile}
                     onSubmit={(config) => upload.mutate(config)}
-                    onCancel={() => { setSelectedFile(null); upload.reset(); }}
+                    onCancel={() => { setSelectedFile(null); upload.reset(); setFileTotalPages(null); setQuotaWarning(false); }}
                     disabled={upload.isPending}
                     quota={quota}
+                    onTotalPages={setFileTotalPages}
+                    onQuotaExceeded={setQuotaWarning}
                   />
                 </motion.div>
               ) : (
@@ -256,6 +260,14 @@ export default function HomePage() {
             {upload.isPending && (
               <p className="text-xs text-center text-indigo-500 flex items-center justify-center gap-1.5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading and queuing…
+              </p>
+            )}
+            {quotaWarning && !upload.isError && quota && (
+              <p className="flex items-start justify-center gap-1.5 text-xs text-amber-600">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>
+                  You have {quota.pages_remaining} page{quota.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {fileTotalPages} pages. Switch to <strong>Single page</strong> to process one page.
+                </span>
               </p>
             )}
             {upload.isError && (

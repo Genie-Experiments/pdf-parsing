@@ -22,6 +22,8 @@ interface Props {
   onCancel: () => void;
   disabled?: boolean;
   quota?: UserQuota;
+  onTotalPages?: (n: number | null) => void;
+  onQuotaExceeded?: (exceeded: boolean) => void;
 }
 
 let pdfjs: typeof import("pdfjs-dist") | null = null;
@@ -33,7 +35,7 @@ async function getPdfJs() {
   return pdfjs;
 }
 
-export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props) {
+export function JobOptions({ file, onSubmit, onCancel, disabled, quota, onTotalPages, onQuotaExceeded }: Props) {
   const [pageMode, setPageMode] = useState<"all" | "single">("all");
   const [pageNum, setPageNum] = useState("1");
   const [segments, setSegments] = useState<Set<string>>(new Set(["tab"]));
@@ -69,6 +71,7 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
         if (cancelled) return;
         pdfDocRef.current = doc;
         setTotalPages(doc.numPages);
+        onTotalPages?.(doc.numPages);
         setDocReady(true);
       } catch {
         // non-fatal — thumbnail just won't appear
@@ -79,8 +82,9 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
       cancelled = true;
       pdfDocRef.current = null;
       if (url) URL.revokeObjectURL(url);
+      onTotalPages?.(null);
     };
-  }, [file]);
+  }, [file]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Render thumbnail whenever page number or doc readiness changes (debounced)
   useEffect(() => {
@@ -137,6 +141,10 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
     quota !== undefined &&
     !quota.bypassed &&
     totalPages > quota.pages_remaining;
+
+  useEffect(() => {
+    onQuotaExceeded?.(quotaExceeded);
+  }, [quotaExceeded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSubmit() {
     if (quotaExceeded) return;
@@ -293,12 +301,6 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
         </button>
       </div>
 
-      {quotaExceeded && (
-        <p className="flex items-start gap-1.5 text-xs text-amber-600">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          <span>You have {quota!.pages_remaining} page{quota!.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {totalPages} pages. Switch to <strong>Single page</strong> to process one page.</span>
-        </p>
-      )}
     </div>
   );
 }
