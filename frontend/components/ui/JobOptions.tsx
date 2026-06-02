@@ -216,7 +216,10 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
                 </div>
               )}
               {!thumbLoading && thumbError && (
-                <p className="text-xs text-red-500">{thumbError}</p>
+                <p className="flex items-start gap-1.5 text-xs text-red-500">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{thumbError}</span>
+                </p>
               )}
               {!thumbLoading && thumbnail && !thumbError && (
                 <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
@@ -291,9 +294,9 @@ export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props)
       </div>
 
       {quotaExceeded && (
-        <p className="flex items-center gap-1.5 text-xs text-amber-600">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          You have {quota!.pages_remaining} page{quota!.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {totalPages} pages. Switch to <strong>Single page</strong> to process one page.
+        <p className="flex items-start gap-1.5 text-xs text-amber-600">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>You have {quota!.pages_remaining} page{quota!.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {totalPages} pages. Switch to <strong>Single page</strong> to process one page.</span>
         </p>
       )}
     </div>

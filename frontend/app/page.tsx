@@ -259,11 +259,12 @@ export default function HomePage() {
               </p>
             )}
             {upload.isError && (
-              <p className="text-xs text-center text-red-500">
-                {(() => {
+              <p className="flex items-start justify-center gap-1.5 text-xs text-red-500">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{(() => {
                   const raw = (upload.error as Error).message;
                   try { return JSON.parse(raw).detail ?? raw; } catch { return raw; }
-                })()}
+                })()}</span>
               </p>
             )}
           </div>
