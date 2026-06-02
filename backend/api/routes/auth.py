@@ -117,7 +117,12 @@ async def login() -> RedirectResponse:
     status_code=status.HTTP_302_FOUND,
     include_in_schema=False,  # Hide raw OAuth callback from public API docs
 )
-async def oauth_callback(request: Request, code: str, state: str) -> RedirectResponse:
+async def oauth_callback(
+    request: Request,
+    code: str,
+    state: str,
+    session: AsyncSession = Depends(db_session),
+) -> RedirectResponse:
     """
     Exchange authorization code for tokens, enforce email domain restriction,
     issue a signed JWT stored as an httpOnly session cookie, redirect to frontend.
@@ -154,6 +159,15 @@ async def oauth_callback(request: Request, code: str, state: str) -> RedirectRes
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Access is restricted to @{settings.allowed_email_domain} accounts.",
         )
+
+    # ── Provision quota on first login ────────────────────────────────────────
+    if not settings.bypass_quota:
+        from models.user_quota import UserQuota
+
+        q = await session.get(UserQuota, email)
+        if q is None:
+            session.add(UserQuota(email=email, page_quota=settings.default_page_quota, pages_used=0))
+            await session.commit()
 
     # ── Issue session cookie ──────────────────────────────────────────────────
     jwt_token = auth_utils.create_access_token(
