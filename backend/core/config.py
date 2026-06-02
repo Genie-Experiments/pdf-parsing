@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # ── quotas ────────────────────────────────────────────────────────────────
     default_page_quota: int = 10  # pages granted to new users on first job submission
-    max_pdf_pages: int = 10  # hard limit: PDFs with more pages are rejected
+    max_pdf_pages: int = 10  # hard limit: rejected when processing the entire document
 
     # ── database pool ────────────────────────────────────────────────────────
     db_pool_size: int = 5

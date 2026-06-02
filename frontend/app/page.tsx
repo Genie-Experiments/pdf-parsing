@@ -187,6 +187,7 @@ export default function HomePage() {
                     onSubmit={(config) => upload.mutate(config)}
                     onCancel={() => { setSelectedFile(null); upload.reset(); }}
                     disabled={upload.isPending}
+                    quota={quota}
                   />
                 </motion.div>
               ) : (

@@ -124,10 +124,10 @@ async def create_job(
     total_pages = len(pdf_doc)
     pdf_doc.close()
 
-    if total_pages > settings.max_pdf_pages:
+    if page is None and total_pages > settings.max_pdf_pages:
         raise HTTPException(
             status_code=400,
-            detail=f"PDF has {total_pages} pages — maximum allowed is {settings.max_pdf_pages}.",
+            detail=f"PDF has {total_pages} pages — full-document processing is limited to {settings.max_pdf_pages} pages. Use single-page mode instead.",
         )
 
     if page is not None and page > total_pages:

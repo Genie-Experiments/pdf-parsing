@@ -8,20 +8,12 @@ interface Props {
   disabled?: boolean;
 }
 
-const MAX_BYTES = 1 * 1024 * 1024; // 1 MB
-
 export function UploadZone({ onFile, disabled }: Props) {
   const [dragging, setDragging] = useState(false);
-  const [sizeError, setSizeError] = useState(false);
 
   const handle = useCallback(
     (file: File) => {
       if (!file.name.toLowerCase().endsWith(".pdf")) return;
-      if (file.size > MAX_BYTES) {
-        setSizeError(true);
-        return;
-      }
-      setSizeError(false);
       onFile(file);
     },
     [onFile],
@@ -72,11 +64,7 @@ export function UploadZone({ onFile, disabled }: Props) {
         <p className="text-sm font-medium text-gray-700">
           {dragging ? "Drop to upload" : "Drop your PDF here"}
         </p>
-        {sizeError ? (
-          <p className="text-xs text-red-500">File exceeds the 1 MB limit.</p>
-        ) : (
-          <p className="text-xs text-gray-400">or click to browse · PDF files only · max 1 MB · max 10 pages</p>
-        )}
+        <p className="text-xs text-gray-400">or click to browse · PDF files only</p>
       </div>
     </label>
   );

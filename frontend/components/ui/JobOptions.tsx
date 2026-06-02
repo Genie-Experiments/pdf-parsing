@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText, X, Loader2 } from "lucide-react";
+import { FileText, X, Loader2, AlertTriangle } from "lucide-react";
+import { UserQuota } from "@/lib/api";
 
 export interface JobConfig {
   file: File;
@@ -20,6 +21,7 @@ interface Props {
   onSubmit: (config: JobConfig) => void;
   onCancel: () => void;
   disabled?: boolean;
+  quota?: UserQuota;
 }
 
 let pdfjs: typeof import("pdfjs-dist") | null = null;
@@ -31,7 +33,7 @@ async function getPdfJs() {
   return pdfjs;
 }
 
-export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
+export function JobOptions({ file, onSubmit, onCancel, disabled, quota }: Props) {
   const [pageMode, setPageMode] = useState<"all" | "single">("all");
   const [pageNum, setPageNum] = useState("1");
   const [segments, setSegments] = useState<Set<string>>(new Set(["tab"]));
@@ -129,7 +131,15 @@ export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
     return () => clearTimeout(timer);
   }, [pageMode, pageNum, docReady]);
 
+  const quotaExceeded =
+    pageMode === "all" &&
+    totalPages !== null &&
+    quota !== undefined &&
+    !quota.bypassed &&
+    totalPages > quota.pages_remaining;
+
   function handleSubmit() {
+    if (quotaExceeded) return;
     const page = pageMode === "single" ? parseInt(pageNum, 10) : undefined;
     onSubmit({ file, page, segmentsToRefine: [...segments] });
   }
@@ -196,6 +206,13 @@ export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
               )}
             </div>
           </div>
+
+          {quotaExceeded && (
+            <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              You have {quota!.pages_remaining} page{quota!.pages_remaining === 1 ? "" : "s"} remaining but this PDF has {totalPages} pages. Switch to <strong>Single page</strong> to process one page.
+            </p>
+          )}
 
           {/* Thumbnail (right) */}
           {pageMode === "single" && (
@@ -273,7 +290,7 @@ export function JobOptions({ file, onSubmit, onCancel, disabled }: Props) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={disabled}
+          disabled={disabled || quotaExceeded}
           className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors"
         >
           Start Processing →
