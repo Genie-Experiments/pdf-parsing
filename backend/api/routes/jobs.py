@@ -342,10 +342,13 @@ async def stream_pdf(
 
     job = await _get_job(job_id, session)
     pdf_bytes = await asyncio.to_thread(storage.download_bytes, job.pdf_key)
+    from urllib.parse import quote
+    encoded_filename = quote(job.filename, safe="")
+    disposition = f"inline; filename*=UTF-8''{encoded_filename}"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{job.filename}"'},
+        headers={"Content-Disposition": disposition},
     )
 
 
