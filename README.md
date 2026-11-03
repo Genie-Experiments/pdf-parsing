@@ -5,6 +5,7 @@ Extracts clean Markdown from PDFs using ByteDance's [Dolphin](https://github.com
 Two ways to use it:
 1. **[Standalone CLI](#1-standalone-pipeline-cli)** — run the pipeline directly against local PDFs, no services needed
 2. **[Full-stack SaaS](#2-full-stack-saas)** — web UI with real-time logs, PDF ↔ Markdown navigation, job history
+3. **[Benchmark](#3-benchmark)** — score the pipeline against LlamaIndex's ParseBench
 
 ## Repository Layout
 
@@ -17,6 +18,8 @@ pdf-parsing/
 ├── backend/            FastAPI API + ARQ worker
 │   └── README.md
 ├── frontend/           Next.js 16 web application
+│   └── README.md
+├── benchmark/          ParseBench scoring harness
 │   └── README.md
 ├── docker-compose.yml  Full-stack orchestration
 ├── Makefile            Convenience commands
@@ -326,3 +329,33 @@ BYPASS_QUOTA=true
 
 - [ByteDance Dolphin](https://github.com/bytedance/Dolphin) — core document parsing model
 - [html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) — HTML table to Markdown conversion
+
+---
+
+## 3. Benchmark
+
+Scores the pipeline against [ParseBench](https://www.parsebench.ai/) — 2,078
+human-verified enterprise pages, graded by deterministic rules across tables,
+charts, content faithfulness, semantic formatting and visual grounding.
+
+Dolphin inference is effectively the whole runtime and is hardware-bound, so
+measure a page on the target machine before starting a full run:
+
+```bash
+make bench-setup           # pipeline + weights + benchmark deps
+make bench-download-test   # 12-page subset
+make bench-calibrate       # seconds per page + projected full-run time
+make bench-test            # smoke test end to end
+
+make bench-download        # full 2,078-page dataset
+make bench-run-bg          # full run, detached — survives logout
+make bench-status          # pages done, and whether it is still running
+```
+
+A full run takes hours, so it is interruptible: every finished page is written
+to its own result file, and re-running skips what is already done. A crash, a
+reboot or a dropped connection costs you the page in flight, not the run.
+
+See [`benchmark/README.md`](benchmark/README.md) for tuning concurrency, scoring
+one dimension at a time, re-scoring without re-running inference, and the known
+gaps in coverage.

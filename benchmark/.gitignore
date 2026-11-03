@@ -1,0 +1,6 @@
+data/
+output/
+.venv/
+logs/
+calibration.json
+run.pid

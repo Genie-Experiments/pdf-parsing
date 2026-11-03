@@ -1,0 +1,28 @@
+[project]
+name = "genieparse-bench"
+version = "0.1.0"
+description = "ParseBench integration for the GenieParse Dolphin pipeline"
+requires-python = ">=3.12"
+dependencies = [
+    "markdown2>=2.5.0",
+    "parse-bench>=0.1.0",
+]
+
+[project.scripts]
+genieparse-bench = "genieparse_bench.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["genieparse_bench"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+    "isort>=8.0.1",
+    "mypy>=1.20.2",
+    "pylint>=4.0.5",
+    "ruff>=0.15.12",
+]

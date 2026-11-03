@@ -8,7 +8,11 @@ SHELL := /bin/bash
         infra-up infra-down db-migrate dev-reset \
         dev-api dev-worker dev-frontend dev-pipeline dev \
         docker-up docker-down \
-        set-quota
+        set-quota \
+        bench-install bench-setup bench-download bench-download-test \
+        bench-calibrate bench-test bench-run bench-rescore \
+        bench-leaderboard bench-report \
+        bench-run-bg bench-status bench-watch bench-stop bench-retry-failed
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +46,7 @@ install:
 install-dev:
 	cd pipeline && uv sync --extra ml --group dev
 	cd backend  && uv sync --extra ml --group dev
+	cd benchmark && uv sync --group dev
 	cd frontend && npm install
 
 # Pipeline-only setup — no backend/frontend deps
@@ -68,16 +73,19 @@ format:
 	cd pipeline && uv run isort . --skip Dolphin --skip html-to-markdown --skip .venv && \
 		uv run black . --exclude "(Dolphin|html-to-markdown|\.venv)"
 	cd backend  && uv run isort . --skip .venv && uv run black . --exclude "\.venv"
+	cd benchmark && uv run isort . --skip .venv && uv run black . --exclude "\.venv"
 
 lint:
 	cd pipeline && uv run ruff check . --exclude Dolphin,html-to-markdown,.venv && \
 		uv run pylint . --ignore=Dolphin,html-to-markdown,.venv
 	cd backend  && uv run ruff check . --exclude .venv && uv run pylint . --ignore=.venv
+	cd benchmark && uv run ruff check . --exclude .venv && uv run pylint . --ignore=.venv
 
 typecheck:
 	cd pipeline && uv run mypy . --ignore-missing-imports --explicit-package-bases \
 		--exclude "Dolphin|html-to-markdown"
 	cd backend  && uv run mypy . --ignore-missing-imports --explicit-package-bases
+	cd benchmark && uv run mypy . --ignore-missing-imports --explicit-package-bases
 
 check: lint typecheck
 
@@ -162,3 +170,112 @@ set-quota:
 	  -c "INSERT INTO user_quota (email, page_quota, pages_used) VALUES ('$(EMAIL)', $(QUOTA), 0) \
 	      ON CONFLICT (email) DO UPDATE SET page_quota = $(QUOTA);"
 	@echo "Quota for $(EMAIL) set to $(QUOTA) pages."
+
+# ── ParseBench ────────────────────────────────────────────────────────────────
+# Scores the pipeline against LlamaIndex's ParseBench. Dolphin inference is the
+# whole cost, so calibrate on the target machine before committing to a full run.
+
+## Pipeline variant to score: genieparse (no LLM) or genieparse_llm (GPT-4o on
+## figures and code — needs OPENAI_API_KEY and bills per figure).
+BENCH_PIPELINE ?= genieparse
+## Parallel pages. Each one is a Dolphin subprocess holding its own copy of the
+## model, so raise this only as far as RAM and cores allow.
+BENCH_CONCURRENCY ?= 1
+BENCH_OUTPUT ?= output
+## Score a single dimension: chart, table, layout, text_content, text_formatting.
+GROUP ?=
+BENCH_RUN := cd benchmark && uv run genieparse-bench
+
+bench-install:
+	cd benchmark && uv sync
+
+# Pipeline venv + model weights + benchmark deps — everything a fresh machine needs.
+bench-setup: setup-pipeline bench-install
+
+bench-download:
+	$(BENCH_RUN) download
+
+bench-download-test:
+	$(BENCH_RUN) download --test
+
+## Time one page on this machine and project a full run.
+##   make bench-calibrate RUNS=3
+RUNS ?= 1
+bench-calibrate:
+	cd benchmark && uv run python -m genieparse_bench.calibrate \
+	  --runs $(RUNS) --concurrency $(BENCH_CONCURRENCY)
+
+## Smoke test on the small dataset (3 files per category) before a full run.
+bench-test:
+	$(BENCH_RUN) run $(BENCH_PIPELINE) --test \
+	  --max_concurrent $(BENCH_CONCURRENCY) --open_report=False
+
+## Full benchmark. Results land in benchmark/$(BENCH_OUTPUT)/$(BENCH_PIPELINE)/.
+##   make bench-run BENCH_CONCURRENCY=4
+##   make bench-run GROUP=table
+bench-run:
+	$(BENCH_RUN) run $(BENCH_PIPELINE) \
+	  --output_dir $(BENCH_OUTPUT) \
+	  --max_concurrent $(BENCH_CONCURRENCY) \
+	  --open_report=False \
+	  $(if $(GROUP),--group $(GROUP),)
+
+## Re-score existing inference output without re-running Dolphin. Post-processing
+## is ~0.2s/page, so this is the loop to iterate on.
+bench-rescore:
+	$(BENCH_RUN) run $(BENCH_PIPELINE) \
+	  --output_dir $(BENCH_OUTPUT) --skip_inference --open_report=False \
+	  $(if $(GROUP),--group $(GROUP),)
+
+bench-leaderboard:
+	$(BENCH_RUN) leaderboard
+
+## Serve the HTML reports (PDF rendering needs http://, not file://).
+bench-report:
+	$(BENCH_RUN) serve $(BENCH_PIPELINE)
+
+# ── ParseBench: long runs ─────────────────────────────────────────────────────
+# A full run takes hours. Completed pages are written one JSON file each, so
+# re-running resumes where it stopped — bench-run and bench-run-bg are both safe
+# to repeat after a crash, a reboot, or a dropped SSH session.
+
+BENCH_LOG ?= logs/bench-$(BENCH_PIPELINE).log
+BENCH_PID ?= run.pid
+
+## Start a full run detached, surviving logout and connection loss.
+## Follow it with 'make bench-watch', check it with 'make bench-status'.
+bench-run-bg:
+	@cd benchmark && mkdir -p $(dir $(BENCH_LOG))
+	@cd benchmark && if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
+	  echo "A run is already going (pid $$(cat $(BENCH_PID))). Stop it with 'make bench-stop'."; exit 1; \
+	fi
+	@cd benchmark && nohup uv run genieparse-bench run $(BENCH_PIPELINE) \
+	  --output_dir $(BENCH_OUTPUT) \
+	  --max_concurrent $(BENCH_CONCURRENCY) \
+	  --open_report=False \
+	  $(if $(GROUP),--group $(GROUP),) \
+	  >> $(BENCH_LOG) 2>&1 & echo $$! > $(BENCH_PID)
+	@cd benchmark && echo "Started pid $$(cat $(BENCH_PID)), logging to benchmark/$(BENCH_LOG)"
+
+## Pages completed per dimension, and whether a run is alive.
+bench-status:
+	@cd benchmark && uv run python -m genieparse_bench.status \
+	  --pipeline $(BENCH_PIPELINE) --output-dir $(BENCH_OUTPUT) --pid-file $(BENCH_PID)
+
+bench-watch:
+	@cd benchmark && tail -f $(BENCH_LOG)
+
+## Stop a detached run. Finished pages are kept; restart to resume.
+bench-stop:
+	@cd benchmark && if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
+	  pkill -TERM -P $$(cat $(BENCH_PID)) 2>/dev/null || true; \
+	  kill -TERM $$(cat $(BENCH_PID)) 2>/dev/null || true; \
+	  echo "Stopped pid $$(cat $(BENCH_PID)). Re-run to resume."; \
+	  rm -f $(BENCH_PID); \
+	else \
+	  echo "No run in progress."; rm -f $(BENCH_PID); \
+	fi
+
+## Re-run only the pages that failed, leaving completed ones alone.
+## Failures write no result file, so this is just a normal resume.
+bench-retry-failed: bench-run
