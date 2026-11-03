@@ -65,3 +65,6 @@ frontend/package-lock.json
 # Local sample input / pipeline output — not for version control
 sample_input_dir/
 pipeline/Output/
+
+# Archify diagram scratch (regenerate with the archify skill)
+.archify/

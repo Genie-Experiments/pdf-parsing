@@ -15,9 +15,11 @@ _TRANSIENT_SIGNALS = {
     signal.SIGKILL,
     signal.SIGTERM,
     signal.SIGHUP,
-    signal.SIGINT,
     signal.SIGBUS,
 }
+
+# SIGINT is deliberately absent: it means someone pressed Ctrl-C, and retrying
+# five times with backoff would fight them for half a minute.
 
 # Substrings in stderr that point at resource exhaustion rather than bad input.
 _TRANSIENT_MARKERS = (

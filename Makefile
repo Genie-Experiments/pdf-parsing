@@ -206,8 +206,11 @@ bench-calibrate:
 	  --runs $(RUNS) --concurrency $(BENCH_CONCURRENCY)
 
 ## Smoke test on the small dataset (3 files per category) before a full run.
+## Writes to its own directory so it cannot seed the real run with results.
+BENCH_TEST_OUTPUT ?= output-test
 bench-test:
 	$(BENCH_RUN) run $(BENCH_PIPELINE) --test \
+	  --output_dir $(BENCH_TEST_OUTPUT) \
 	  --max_concurrent $(BENCH_CONCURRENCY) --open_report=False
 
 ## Full benchmark. Results land in benchmark/$(BENCH_OUTPUT)/$(BENCH_PIPELINE)/.
@@ -244,18 +247,26 @@ BENCH_PID ?= run.pid
 
 ## Start a full run detached, surviving logout and connection loss.
 ## Follow it with 'make bench-watch', check it with 'make bench-status'.
+## `set -m` puts the run in its own process group so bench-stop can take the
+## whole tree down; $$! must be read in the same shell that did the cd, or the
+## pid file lands in the wrong directory and records the wrong process.
 bench-run-bg:
-	@cd benchmark && mkdir -p $(dir $(BENCH_LOG))
-	@cd benchmark && if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
-	  echo "A run is already going (pid $$(cat $(BENCH_PID))). Stop it with 'make bench-stop'."; exit 1; \
-	fi
-	@cd benchmark && nohup uv run genieparse-bench run $(BENCH_PIPELINE) \
-	  --output_dir $(BENCH_OUTPUT) \
-	  --max_concurrent $(BENCH_CONCURRENCY) \
-	  --open_report=False \
-	  $(if $(GROUP),--group $(GROUP),) \
-	  >> $(BENCH_LOG) 2>&1 & echo $$! > $(BENCH_PID)
-	@cd benchmark && echo "Started pid $$(cat $(BENCH_PID)), logging to benchmark/$(BENCH_LOG)"
+	@cd benchmark; \
+	  mkdir -p $(dir $(BENCH_LOG)); \
+	  if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
+	    echo "A run is already going (pid $$(cat $(BENCH_PID))). Stop it with 'make bench-stop'."; \
+	    exit 1; \
+	  fi; \
+	  set -m; \
+	  nohup uv run genieparse-bench run $(BENCH_PIPELINE) \
+	    --output_dir $(BENCH_OUTPUT) \
+	    --max_concurrent $(BENCH_CONCURRENCY) \
+	    --open_report=False \
+	    $(if $(GROUP),--group $(GROUP),) \
+	    >> $(BENCH_LOG) 2>&1 & \
+	  pid=$$!; \
+	  echo $$pid > $(BENCH_PID); \
+	  echo "Started pid $$pid, logging to benchmark/$(BENCH_LOG)"
 
 ## Pages completed per dimension, and whether a run is alive.
 bench-status:
@@ -263,18 +274,20 @@ bench-status:
 	  --pipeline $(BENCH_PIPELINE) --output-dir $(BENCH_OUTPUT) --pid-file $(BENCH_PID)
 
 bench-watch:
-	@cd benchmark && tail -f $(BENCH_LOG)
+	@cd benchmark && touch $(BENCH_LOG) && tail -f $(BENCH_LOG)
 
 ## Stop a detached run. Finished pages are kept; restart to resume.
+## Signals the process group, so Dolphin subprocesses go too.
 bench-stop:
-	@cd benchmark && if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
-	  pkill -TERM -P $$(cat $(BENCH_PID)) 2>/dev/null || true; \
-	  kill -TERM $$(cat $(BENCH_PID)) 2>/dev/null || true; \
-	  echo "Stopped pid $$(cat $(BENCH_PID)). Re-run to resume."; \
-	  rm -f $(BENCH_PID); \
-	else \
-	  echo "No run in progress."; rm -f $(BENCH_PID); \
-	fi
+	@cd benchmark; \
+	  if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
+	    pid=$$(cat $(BENCH_PID)); \
+	    kill -TERM -$$pid 2>/dev/null || kill -TERM $$pid 2>/dev/null || true; \
+	    echo "Stopped pid $$pid. Re-run to resume where it left off."; \
+	    rm -f $(BENCH_PID); \
+	  else \
+	    echo "No run in progress."; rm -f $(BENCH_PID); \
+	  fi
 
 ## Re-run only the pages that failed, leaving completed ones alone.
 ## Failures write no result file, so this is just a normal resume.

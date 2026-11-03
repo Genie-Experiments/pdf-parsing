@@ -55,24 +55,40 @@ make bench-calibrate RUNS=3 BENCH_CONCURRENCY=4
 This reports the device Dolphin selected, seconds per page, and a projected
 wall-clock time for the full benchmark, and writes `benchmark/calibration.json`.
 
+It reports the device Dolphin selected, seconds per page, a projected
+wall-clock time, and — when `BENCH_CONCURRENCY` is above 1 — a single-worker
+baseline so the speedup figure means something. Results are written to
+`benchmark/calibration.json`.
+
 Three things it will tell you that matter for planning:
 
 - **Post-processing is free.** On an Apple M3, a dense page measured 81.2s of
   which Dolphin took 81.0s and all nine post-processing steps took 0.2s
   combined. Tune post-processing all you like; it costs nothing.
-- **Page density matters more than page count.** The same M3 ran a ParseBench
-  chart page in 45.4s and a dense two-column paper page in 81.2s, which is why
-  calibrating on an actual dataset page beats estimating from any single sample.
+- **Page density drives everything.** The same M3 ran a ParseBench chart page in
+  45.4s and a dense two-column paper page in 81.2s. Calibrate on real dataset
+  pages, which is what this command does by default.
 - **Model load does not amortise.** The pipeline spawns one Dolphin subprocess
-  per PDF, so every page reloads the model. Raising `BENCH_CONCURRENCY` is the
-  only way to overlap that cost, and each worker holds its own copy of the
-  model in memory.
+  per PDF, so every page reloads the model. Concurrency is the only way to
+  overlap that cost, and each worker holds its own copy of the model in memory.
 
-Concurrency buys less than it looks on CPU. Dolphin is already multi-threaded,
-so workers compete for the same cores: on the M3, three workers pushed per-page
-latency from 45s to 89–115s, a throughput gain of roughly 1.4x rather than 3x.
-Measure with `make bench-calibrate` at the concurrency you plan to use rather
-than assuming it scales.
+### Concurrency is measured, not assumed
+
+Measured on an 8-core M3 (4 performance, 4 efficiency) with 16 GB:
+
+| Workers | Throughput | Versus 1 worker |
+|---------|-----------|-----------------|
+| 1 | 34-55s per page | baseline |
+| 2 | 27.9s per page | 1.97x faster |
+| 4 | 42.1s per page | **1.23x slower** |
+
+Four workers lose to one. Each holds its own copy of the model, so past a
+certain point they contend for cores and memory instead of overlapping. The
+command warns when it measures that, and the right concurrency is whatever
+measures fastest on the machine you are actually using — do not assume it
+scales with core count.
+
+Timings vary run to run with machine load, so treat a single number as a range.
 
 ## 2. Smoke test
 
@@ -81,7 +97,9 @@ make bench-test
 ```
 
 Runs the 12-page subset end to end. Do this before a full run — it catches a
-broken provider in minutes rather than hours.
+broken provider in minutes rather than hours. It writes to `output-test/` rather
+than `output/`, so a smoke test can never seed the real run with results it
+would then skip.
 
 ## 3. Full run
 
@@ -134,6 +152,8 @@ make bench-stop          # stop it; finished pages are kept
 `bench-run-bg` writes `benchmark/run.pid` and appends to
 `benchmark/logs/bench-<pipeline>.log`. It refuses to start a second run while
 one is alive, so a stray repeat cannot have two writers in one output directory.
+The run gets its own process group, so `bench-stop` signals the whole tree and
+no orphaned Dolphin subprocess is left holding a CPU.
 On a server you control, a systemd unit with `Restart=on-failure` running
 `make bench-run` gives you the same thing plus automatic restart — resume makes
 that safe.
@@ -147,7 +167,8 @@ so `genieparse_bench/faults.py` classifies pipeline failures:
 
 | Failure | Classified | Why |
 |---------|-----------|-----|
-| Killed by SIGKILL/SIGTERM/SIGHUP/SIGINT/SIGBUS | transient | The OOM killer, a shutdown, or an operator — not the PDF's fault |
+| Killed by SIGKILL/SIGTERM/SIGHUP/SIGBUS | transient | The OOM killer, a shutdown — not the PDF's fault |
+| Killed by SIGINT | permanent | Someone pressed Ctrl-C; retrying would fight them |
 | stderr shows memory or disk exhaustion | transient | The retry may land on a quieter machine |
 | Page exceeds `GENIEPARSE_PAGE_TIMEOUT` (default 1200s) | transient | A stuck page usually means thrashing |
 | Any other non-zero exit | permanent | The pipeline genuinely could not parse this page |

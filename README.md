@@ -350,6 +350,7 @@ make bench-test            # smoke test end to end
 make bench-download        # full 2,078-page dataset
 make bench-run-bg          # full run, detached — survives logout
 make bench-status          # pages done, and whether it is still running
+make bench-stop            # stop it; finished pages are kept
 ```
 
 A full run takes hours, so it is interruptible: every finished page is written

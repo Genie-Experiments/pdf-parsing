@@ -1,5 +1,6 @@
 data/
 output/
+output-test/
 .venv/
 logs/
 calibration.json
