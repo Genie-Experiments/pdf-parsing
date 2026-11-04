@@ -27,6 +27,9 @@ not covered here.
 [`docs/how-it-works.html`](docs/how-it-works.html) draws the whole exchange as a
 sequence diagram — open it in a browser. Violet lifelines are ours, green belong
 to the ParseBench platform, and the single seam between them is the provider.
+Its timings describe a 120s page. Hardware moves that number a lot — an M3 runs
+these pages in 45s to 81s — but the split barely moves: Dolphin is ~98% of a
+page wherever you run it.
 [`docs/how-it-works.sequence.json`](docs/how-it-works.sequence.json) is the
 source it was rendered from.
 

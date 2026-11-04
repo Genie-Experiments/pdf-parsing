@@ -3,7 +3,7 @@
   "diagram_type": "sequence",
   "meta": {
     "title": "GenieParse on ParseBench-Platform - who does what, page by page",
-    "output": ".archify/sequence-genieparse-parsebench-20261104-142600/genieparse-parsebench.html",
+    "output": ".archify/sequence-genieparse-parsebench-20261104-154643/genieparse-parsebench.html",
     "column_fit": "spread",
     "quality_profile": "showcase",
     "legend": {
@@ -134,7 +134,7 @@
       "from": "dolphin",
       "to": "pipeline",
       "y": 442,
-      "label": "boxes + raw markdown, 81.0s",
+      "label": "boxes + raw markdown, ~117s",
       "variant": "return"
     },
     {
@@ -142,7 +142,7 @@
       "from": "pipeline",
       "to": "provider",
       "y": 470,
-      "label": "steps 2-10 tidy it up, 0.2s",
+      "label": "steps 2-10 tidy it up, 0.3s",
       "variant": "return"
     },
     {
@@ -285,7 +285,7 @@
       "items": [
         "Provider: parses on the first call, normalises on the second",
         "Pipeline: main.py, Dolphin plus nine post-processing steps",
-        "Dolphin: the ByteDance layout model, and ~100% of the runtime"
+        "Dolphin: the ByteDance layout model, and ~98% of the runtime"
       ]
     },
     {
@@ -301,7 +301,7 @@
       "dot": "amber",
       "title": "The three things worth remembering",
       "items": [
-        "Dolphin is the whole cost, so bench-rescore is the cheap loop",
+        "Dolphin is ~117s of a 120s page, so bench-rescore is cheap",
         "Progress lives in result files, not memory, so a crash resumes",
         "A failed page writes none, so the next run picks it up again"
       ]

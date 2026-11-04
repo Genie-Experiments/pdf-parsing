@@ -5111,19 +5111,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         </g>
 
-        <g data-edge-from="dolphin" data-edge-to="pipeline" data-edge-label="boxes + raw markdown, 81.0s" data-edge-key="7" data-edge-id="raw">
+        <g data-edge-from="dolphin" data-edge-to="pipeline" data-edge-label="boxes + raw markdown, ~117s" data-edge-key="7" data-edge-id="raw">
           <path data-composition-edge-from="dolphin" data-composition-edge-to="pipeline" data-composition-edge-id="raw" data-composition-points="828,442;720.6666666666666,442" d="M 828 442 L 720.6666666666666 442" class="a-default" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
           <rect x="679.2333333333332" y="422" width="190.2" height="18" rx="3" class="c-mask"/>
-          <text x="774.3333333333333" y="432" class="t-muted" font-size="11" text-anchor="middle">boxes + raw markdown, 81.0s</text>
+          <text x="774.3333333333333" y="432" class="t-muted" font-size="11" text-anchor="middle">boxes + raw markdown, ~117s</text>
         </g>
         </g>
 
-        <g data-edge-from="pipeline" data-edge-to="provider" data-edge-label="steps 2-10 tidy it up, 0.2s" data-edge-key="8" data-edge-id="clean">
+        <g data-edge-from="pipeline" data-edge-to="provider" data-edge-label="steps 2-10 tidy it up, 0.3s" data-edge-key="8" data-edge-id="clean">
           <path data-composition-edge-from="pipeline" data-composition-edge-to="provider" data-composition-edge-id="clean" data-composition-points="706.6666666666666,470;599.3333333333333,470" d="M 706.6666666666666 470 L 599.3333333333333 470" class="a-default" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
           <rect x="557.9" y="450" width="190.2" height="18" rx="3" class="c-mask"/>
-          <text x="653" y="460" class="t-muted" font-size="11" text-anchor="middle">steps 2-10 tidy it up, 0.2s</text>
+          <text x="653" y="460" class="t-muted" font-size="11" text-anchor="middle">steps 2-10 tidy it up, 0.3s</text>
         </g>
         </g>
 
@@ -5549,7 +5549,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <ul>
           <li>Provider: parses on the first call, normalises on the second</li>
           <li>Pipeline: main.py, Dolphin plus nine post-processing steps</li>
-          <li>Dolphin: the ByteDance layout model, and ~100% of the runtime</li>
+          <li>Dolphin: the ByteDance layout model, and ~98% of the runtime</li>
         </ul>
       </div>
 
@@ -5571,7 +5571,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>The three things worth remembering</h3>
         </div>
         <ul>
-          <li>Dolphin is the whole cost, so bench-rescore is the cheap loop</li>
+          <li>Dolphin is ~117s of a 120s page, so bench-rescore is cheap</li>
           <li>Progress lives in result files, not memory, so a crash resumes</li>
           <li>A failed page writes none, so the next run picks it up again</li>
         </ul>
