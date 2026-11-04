@@ -36,15 +36,38 @@ source it was rendered from.
 ## Setup on a new machine
 
 ```bash
-make bench-setup
+make bench-setup       # CPU — any Mac, or a Linux box with no NVIDIA card
+make bench-setup-gpu   # NVIDIA GPU — same thing, CUDA build of torch
 ```
 
-Installs the pipeline (submodules, ML deps), downloads the ~770 MB Dolphin
-weights into `pipeline/hf_model/`, and installs the benchmark package. It needs
-[uv](https://docs.astral.sh/uv/getting-started/installation/) and stops with
-install instructions if it is missing. On an NVIDIA host run
-`make setup-pipeline-gpu` first — Dolphin uses CUDA when it is available and
-CPU otherwise.
+Both pull the submodules and ML deps, download the ~770 MB Dolphin weights into
+`pipeline/hf_model/`, and install the benchmark package. They need
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and stop with
+install instructions if it is missing. `make bench-setup-cpu` is an alias for
+`make bench-setup`, for when a script should say which one it means.
+
+`bench-setup-gpu` installs CUDA 12.4 wheels by default. Check what the driver
+supports with `nvidia-smi` and override if it differs:
+
+```bash
+make bench-setup-gpu CUDA_VERSION=cu121
+```
+
+Then confirm it took:
+
+```bash
+make bench-device
+```
+
+That asks the pipeline's own torch what Dolphin will select, and prints `cuda`
+or `cpu`. A `cpu` answer on a GPU machine means the CUDA wheels did not land —
+much better caught here than inferred from a run going twenty times slower than
+it should.
+
+**Nothing after setup differs between CPU and GPU.** Dolphin picks CUDA when it
+is available and CPU otherwise, so `bench-device`, `bench-calibrate`,
+`bench-prewarm`, `bench-test` and `bench-run` are the same commands on both
+machines. The only thing worth re-measuring per machine is concurrency.
 
 The dataset lives outside git, and `make bench-calibrate` and `make bench-run`
 fetch what they need the first time they are run, so neither needs a download
@@ -82,9 +105,12 @@ Three things it will tell you that matter for planning:
 - **Page density drives everything.** The same M3 ran a ParseBench chart page in
   45.4s and a dense two-column paper page in 81.2s. Calibrate on real dataset
   pages, which is what this command does by default.
-- **Model load does not amortise.** The pipeline spawns one Dolphin subprocess
-  per PDF, so every page reloads the model. Concurrency is the only way to
-  overlap that cost, and each worker holds its own copy of the model in memory.
+- **Model load does not amortise by default.** The pipeline spawns one Dolphin
+  subprocess per PDF, so every page pays a fresh cold start — 4.96s measured on
+  an M3, of which importing torch and transformers is 4.26s and loading the
+  398M-parameter weights only 0.18s. `make bench-prewarm` is meant to take that
+  out of the run but does not engage yet — see below. Each concurrent worker
+  also holds its own copy of the model.
 
 ### Concurrency is measured, not assumed
 
@@ -135,6 +161,45 @@ View the reports (PDF rendering needs `http://`, not `file://`):
 make bench-report
 make bench-leaderboard
 ```
+
+### Prewarming — not wired up yet
+
+```bash
+make bench-prewarm        # populates the cache; see the caveat below
+make bench-prewarm CHUNK=100
+```
+
+**This does not speed up `make bench-run` today.** The cache is built and the
+mechanism works, but the lookup does not match, so leave it alone until that is
+fixed. It is documented here because the measurements behind it matter for
+sizing hardware.
+
+The problem it is meant to solve: the pipeline spawns one Dolphin subprocess per
+PDF, so every page pays a fresh cold start — 4.96s on an M3, of which
+`import torch` is 1.20s, `import transformers` 3.06s, the processor 0.45s, and
+the 398M-parameter weights only 0.18s. Those imports cost the same wherever they
+run, so on CPU the cold start is ~20% of a page and hides behind inference, while
+on a GPU inference shrinks and the cold start does not. Size a GPU purchase
+without accounting for it and you buy capacity to cover Python imports.
+
+Dolphin's CLI takes a directory and processes it with one model load, which is
+what `bench-prewarm` exploits: it runs the dataset through in chunks and caches
+the output under `benchmark/dolphin-cache/`. Measured directly through
+`run_pipeline`, a cached page takes **1.62s against 42s** uncached.
+
+Why it does not engage yet: parse-bench does not hand the provider the dataset
+file. It materialises each example to a temporary file with a generated name —
+`101cf170df9ba6d4-form.pdf`, `document_8c46845f7b035e9d.pdf` — and the cache is
+keyed on the document stem, so nothing matches. A clean smoke run measured
+**0 hits and 2 misses**. Keying on the PDF's content hash instead would fix the
+lookup. What still needs checking before that ships: 10 of 12 scored markdowns
+embed figure paths built from the input filename
+(`figures/<stem>_page_001_figure_002.png`), so a cache entry recorded under one
+name and replayed under another could change the scored text — and a change that
+moves scores is worse than no speedup at all.
+
+Prewarming is safe to interrupt either way. Dolphin writes each page as it
+finishes, so a killed pass loses only the page in flight.
 
 ## 4. Surviving a long run
 
@@ -224,6 +289,10 @@ fixes against the benchmark — pay for inference once, then iterate for free.
 - **Heuristics are tuned on a different corpus.** Header/footer removal and
   section hierarchy were built against our own documents. ParseBench is
   insurance, finance and government. Misfires there are real signal.
+- **The CUDA path has not been exercised.** `make bench-setup-gpu` installs a
+  CUDA build and `make bench-device` reports what Dolphin sees, but no run has
+  been measured on an NVIDIA machine. Treat the first GPU run as a trial:
+  `make bench-device`, then `make bench-test`, before committing to a full pass.
 - **Dolphin ignores Apple Silicon GPUs.** It selects CUDA or CPU only, so Macs
   run on CPU in float32 even where MPS is available. Changing that means a patch
   to the Dolphin submodule.
@@ -241,6 +310,8 @@ fixes against the benchmark — pay for inference once, then iterate for free.
 | `GENIEPARSE_PYTHON` | `../pipeline/.venv/bin/python` | Interpreter with the ML deps |
 | `GENIEPARSE_PAGE_TIMEOUT` | `1200` | Seconds before a page counts as stuck |
 | `GENIEPARSE_SCRATCH_DIR` | system temp | Where per-page scratch goes |
+| `GENIEPARSE_DOLPHIN_CACHE` | `benchmark/dolphin-cache` | Where prewarmed Dolphin output lives |
+| `GENIEPARSE_USE_DOLPHIN_CACHE` | `1` | Set to `0` to force inference per page (the cache does not engage yet either way) |
 
 ## First measured results
 

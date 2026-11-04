@@ -10,9 +10,10 @@ SHELL := /bin/bash
         docker-up docker-down \
         set-quota \
         check-uv \
-        bench-install bench-setup bench-download bench-download-test \
+        bench-install bench-setup bench-setup-cpu bench-setup-gpu \
+        bench-device bench-download bench-download-test \
         bench-data bench-data-test bench-preflight \
-        bench-calibrate bench-test bench-run bench-rescore \
+        bench-calibrate bench-test bench-run bench-rescore bench-prewarm \
         bench-leaderboard bench-report \
         bench-run-bg bench-status bench-watch bench-stop bench-retry-failed
 
@@ -207,10 +208,31 @@ bench-install:
 	cd benchmark && uv sync
 
 # Pipeline venv + model weights + benchmark deps — everything a fresh machine needs.
-bench-setup: check-uv submodules install-pipeline model bench-install
+## Set up the benchmark on a CPU-only machine. This is the default: use it on
+## any Mac, and on a Linux box without an NVIDIA card.
+bench-setup bench-setup-cpu: check-uv submodules install-pipeline model bench-install
 	@echo
-	@echo "Setup done. Next: 'make bench-calibrate' to time this machine,"
-	@echo "then 'make bench-run' for the full benchmark."
+	@echo "Setup done (CPU build of torch)."
+	@echo "Check what Dolphin will use here:  make bench-device"
+	@echo "Then time this machine:            make bench-calibrate"
+
+## Set up the benchmark on an NVIDIA GPU machine — the same thing, but with a
+## CUDA build of torch. Everything after setup is identical: Dolphin picks CUDA
+## on its own, so bench-calibrate / bench-prewarm / bench-run do not change.
+## Check your driver's CUDA version first (nvidia-smi) and override if needed:
+##   make bench-setup-gpu CUDA_VERSION=cu121
+bench-setup-gpu: check-uv submodules install-pipeline-gpu model bench-install
+	@echo
+	@echo "Setup done (CUDA $(CUDA_VERSION) build of torch)."
+	@echo "Confirm Dolphin actually sees the GPU:  make bench-device"
+	@echo "Then time this machine:                 make bench-calibrate"
+
+## Report the device Dolphin will use here, by asking the pipeline's own torch.
+## Run it after setup — a CPU answer on a GPU box means the CUDA build did not
+## take, and the whole run would quietly go at CPU speed.
+bench-device:
+	@cd benchmark && uv run python -c \
+	  "from genieparse_bench.calibrate import torch_device; print(torch_device())"
 
 bench-download:
 	$(BENCH_RUN) download
@@ -277,6 +299,15 @@ bench-rescore:
 	$(BENCH_RUN) run $(BENCH_PIPELINE) \
 	  --output_dir $(BENCH_OUTPUT) --skip_inference --open_report=False \
 	  $(if $(GROUP),--group $(GROUP),)
+
+## INCOMPLETE — populates the Dolphin cache, but bench-run does not hit it yet.
+## parse-bench passes the provider a generated temp filename, not the dataset
+## name the cache is keyed on, so every lookup misses. See the prewarming
+## section in benchmark/README.md before using this.
+##   make bench-prewarm CHUNK=100
+CHUNK ?= 50
+bench-prewarm: bench-preflight bench-data
+	cd benchmark && uv run python -m genieparse_bench.prewarm --chunk-size $(CHUNK)
 
 bench-leaderboard:
 	$(BENCH_RUN) leaderboard

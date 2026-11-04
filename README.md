@@ -343,8 +343,14 @@ measure a page on the target machine before starting a full run. From a fresh
 clone, three commands:
 
 ```bash
-make bench-setup      # submodules, deps, and the 770 MB Dolphin weights
+make bench-setup      # CPU: submodules, deps, and the 770 MB Dolphin weights
 ```
+
+On an NVIDIA machine run `make bench-setup-gpu` instead — the same steps with a
+CUDA build of torch, and `make bench-setup-gpu CUDA_VERSION=cu121` if the
+driver needs an older one. `make bench-device` then reports which device
+Dolphin actually selected, which is worth checking before a long run. Nothing
+after setup differs between the two.
 
 ```bash
 make bench-calibrate  # times real pages here, projects the full run
@@ -363,6 +369,12 @@ Read the calibration before committing to a full run. Measured on an Apple M3,
 a page takes 45s to 81s depending on how dense it is, which puts the full set
 somewhere between one and two days on a single worker — and more workers are
 not always faster, since each one loads its own copy of the model.
+
+Every page also pays a fresh model load: 4.96s on that M3, almost all of it
+importing torch and transformers. That cost does not shrink on a GPU, so it is
+worth knowing before sizing one. `make bench-prewarm` is the intended fix and
+is not finished — see the prewarming section in
+[`benchmark/README.md`](benchmark/README.md) for where it stands.
 
 For a run you cannot babysit:
 

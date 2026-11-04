@@ -1,6 +1,7 @@
 data/
 output/
-output-test/
+output-test*/
+dolphin-cache/
 .venv/
 logs/
 calibration.json

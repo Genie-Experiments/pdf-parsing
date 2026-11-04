@@ -25,6 +25,21 @@ DEFAULT_PAGE_TIMEOUT_S = float(os.environ.get("GENIEPARSE_PAGE_TIMEOUT", "1200")
 _STALE_SCRATCH_AGE_S = 6 * 3600
 
 
+def _cache_enabled() -> bool:
+    """Whether to use prewarmed Dolphin output when it exists.
+
+    On by default, because a cache only exists if someone ran `make
+    bench-prewarm` deliberately. Set GENIEPARSE_USE_DOLPHIN_CACHE=0 to force
+    inference per page -- for instance to confirm the cache is not changing
+    results.
+    """
+    return os.environ.get("GENIEPARSE_USE_DOLPHIN_CACHE", "1").lower() not in (
+        "0",
+        "false",
+        "no",
+    )
+
+
 def scratch_root() -> Path:
     """Where per-page scratch directories live. Override with GENIEPARSE_SCRATCH_DIR."""
     env = os.environ.get("GENIEPARSE_SCRATCH_DIR")
@@ -86,7 +101,22 @@ def run_pipeline(
         env = dict(os.environ)
         env["OUTPUT_DIRECTORY"] = out_root
         env["RESUME"] = "false"
-        env["START_FROM_STEP"] = "1"
+
+        # Imported here rather than at module scope: genieparse_bench/__init__
+        # imports this module, so a top-level import would leave prewarm in
+        # sys.modules before `python -m genieparse_bench.prewarm` executes it,
+        # and runpy warns about exactly that.
+        from genieparse_bench import prewarm  # pylint: disable=import-outside-toplevel
+
+        # If this page was prewarmed, Dolphin already ran for it with the model
+        # loaded once for a whole chunk instead of once for this page. Stage
+        # that output where steps 2-10 expect it and skip step 1.
+        cached = prewarm.lookup(pdf_path.stem) if _cache_enabled() else None
+        if cached is not None:
+            prewarm.stage(cached, Path(out_root))
+            env["START_FROM_STEP"] = "2"
+        else:
+            env["START_FROM_STEP"] = "1"
 
         completed = subprocess.run(
             cmd,
