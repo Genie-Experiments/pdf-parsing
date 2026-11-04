@@ -300,10 +300,10 @@ bench-rescore:
 	  --output_dir $(BENCH_OUTPUT) --skip_inference --open_report=False \
 	  $(if $(GROUP),--group $(GROUP),)
 
-## INCOMPLETE — populates the Dolphin cache, but bench-run does not hit it yet.
-## parse-bench passes the provider a generated temp filename, not the dataset
-## name the cache is keyed on, so every lookup misses. See the prewarming
-## section in benchmark/README.md before using this.
+## Pre-compute Dolphin inference, loading the model once per chunk instead of
+## once per page. The per-page cold start is ~5s (mostly importing torch and
+## transformers); on CPU that hides behind inference, on a GPU it does not.
+## Safe to interrupt — cached pages stay, so re-running resumes.
 ##   make bench-prewarm CHUNK=100
 CHUNK ?= 50
 bench-prewarm: bench-preflight bench-data

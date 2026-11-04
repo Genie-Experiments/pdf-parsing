@@ -106,14 +106,15 @@ def run_pipeline(
         # imports this module, so a top-level import would leave prewarm in
         # sys.modules before `python -m genieparse_bench.prewarm` executes it,
         # and runpy warns about exactly that.
-        from genieparse_bench import prewarm  # pylint: disable=import-outside-toplevel
+        # pylint: disable-next=import-outside-toplevel
+        from genieparse_bench import prewarm
 
         # If this page was prewarmed, Dolphin already ran for it with the model
         # loaded once for a whole chunk instead of once for this page. Stage
         # that output where steps 2-10 expect it and skip step 1.
-        cached = prewarm.lookup(pdf_path.stem) if _cache_enabled() else None
+        cached = prewarm.lookup(pdf_path) if _cache_enabled() else None
         if cached is not None:
-            prewarm.stage(cached, Path(out_root))
+            prewarm.stage(cached, Path(out_root), pdf_path.stem)
             env["START_FROM_STEP"] = "2"
         else:
             env["START_FROM_STEP"] = "1"

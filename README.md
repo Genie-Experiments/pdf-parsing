@@ -371,10 +371,9 @@ somewhere between one and two days on a single worker — and more workers are
 not always faster, since each one loads its own copy of the model.
 
 Every page also pays a fresh model load: 4.96s on that M3, almost all of it
-importing torch and transformers. That cost does not shrink on a GPU, so it is
-worth knowing before sizing one. `make bench-prewarm` is the intended fix and
-is not finished — see the prewarming section in
-[`benchmark/README.md`](benchmark/README.md) for where it stands.
+importing torch and transformers. That cost does not shrink on a GPU, so it
+matters most there. `make bench-prewarm` runs Dolphin over the dataset in
+chunks first, so the run pays it once per chunk instead of once per page.
 
 For a run you cannot babysit:
 

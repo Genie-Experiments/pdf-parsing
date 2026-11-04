@@ -108,9 +108,8 @@ Three things it will tell you that matter for planning:
 - **Model load does not amortise by default.** The pipeline spawns one Dolphin
   subprocess per PDF, so every page pays a fresh cold start — 4.96s measured on
   an M3, of which importing torch and transformers is 4.26s and loading the
-  398M-parameter weights only 0.18s. `make bench-prewarm` is meant to take that
-  out of the run but does not engage yet — see below. Each concurrent worker
-  also holds its own copy of the model.
+  398M-parameter weights only 0.18s. `make bench-prewarm` takes that out of the
+  run; see below. Each concurrent worker also holds its own copy of the model.
 
 ### Concurrency is measured, not assumed
 
@@ -162,44 +161,62 @@ make bench-report
 make bench-leaderboard
 ```
 
-### Prewarming — not wired up yet
+### Prewarming — take the model load out of the run
 
 ```bash
-make bench-prewarm        # populates the cache; see the caveat below
+make bench-prewarm
 make bench-prewarm CHUNK=100
 ```
 
-**This does not speed up `make bench-run` today.** The cache is built and the
-mechanism works, but the lookup does not match, so leave it alone until that is
-fixed. It is documented here because the measurements behind it matter for
-sizing hardware.
+Dolphin's CLI accepts a directory and processes it with one model load. This
+feeds it the dataset in chunks and caches the output under
+`benchmark/dolphin-cache/`; `make bench-run` then finds the cached page, skips
+step 1, and starts at step 2.
 
-The problem it is meant to solve: the pipeline spawns one Dolphin subprocess per
-PDF, so every page pays a fresh cold start — 4.96s on an M3, of which
-`import torch` is 1.20s, `import transformers` 3.06s, the processor 0.45s, and
-the 398M-parameter weights only 0.18s. Those imports cost the same wherever they
-run, so on CPU the cold start is ~20% of a page and hides behind inference, while
-on a GPU inference shrinks and the cold start does not. Size a GPU purchase
-without accounting for it and you buy capacity to cover Python imports.
+Whether it is worth doing depends entirely on the hardware. The per-page cold
+start is 4.96s on an M3 — `import torch` 1.20s, `import transformers` 3.06s,
+the processor 0.45s, and the 398M-parameter weights only 0.18s. Those imports
+cost the same wherever they run:
 
-Dolphin's CLI takes a directory and processes it with one model load, which is
-what `bench-prewarm` exploits: it runs the dataset through in chunks and caches
-the output under `benchmark/dolphin-cache/`. Measured directly through
-`run_pipeline`, a cached page takes **1.62s against 42s** uncached.
+| | Cold start | Inference | Cold start as a share |
+|---|---|---|---|
+| CPU (M3) | 4.96s | ~16.6s | ~20% |
+| GPU | 4.96s, plus CUDA init | much smaller | much larger |
 
-Why it does not engage yet: parse-bench does not hand the provider the dataset
-file. It materialises each example to a temporary file with a generated name —
-`101cf170df9ba6d4-form.pdf`, `document_8c46845f7b035e9d.pdf` — and the cache is
-keyed on the document stem, so nothing matches. A clean smoke run measured
-**0 hits and 2 misses**. Keying on the PDF's content hash instead would fix the
-lookup. What still needs checking before that ships: 10 of 12 scored markdowns
-embed figure paths built from the input filename
-(`figures/<stem>_page_001_figure_002.png`), so a cache entry recorded under one
-name and replayed under another could change the scored text — and a change that
-moves scores is worse than no speedup at all.
+On CPU this is a modest win. On a GPU it is the difference between the card
+doing work and the card waiting for Python to finish importing — size a
+hardware purchase without it and you are buying capacity to cover overhead.
 
-Prewarming is safe to interrupt either way. Dolphin writes each page as it
-finishes, so a killed pass loses only the page in flight.
+Measured through the provider on one page: **1.62s cached against 42s
+uncached**, because a prewarmed page skips inference entirely. That inference
+is not free, it moved into the prewarm pass; what the cache removes from a
+2,078-page run is 2,077 redundant model loads.
+
+**Entries are keyed on PDF content, not filename.** parse-bench does not hand
+the provider the dataset file — it materialises each example to a temporary
+file with a generated name, `101cf170df9ba6d4-form.pdf` — so a name-keyed cache
+would never match. Keying on the SHA-256 of the bytes also means two dataset
+entries holding the same page are inferred once.
+
+One consequence worth knowing about: Dolphin names figures after the input
+file, and the markdown links to them by that name — and that markdown is the
+text ParseBench scores. Cached output is therefore renamed back to the caller's
+stem on the way out, links rewritten to match, so the result is byte-identical
+to what inference would have produced. That equivalence is checked, not
+assumed; see below.
+
+Prewarming is safe to interrupt. Dolphin writes each page as it finishes, so a
+killed pass loses only the page in flight — everything already cached stays,
+and re-running re-chunks what is left. `CHUNK` therefore only trades model
+loads against chunk granularity: at the default 50, a full run pays 42 loads
+instead of 2,078.
+
+To confirm the cache is not changing results on your own dataset, run the same
+pages both ways and diff:
+
+```bash
+GENIEPARSE_USE_DOLPHIN_CACHE=0 make bench-run BENCH_OUTPUT=output-nocache
+```
 
 ## 4. Surviving a long run
 
@@ -311,7 +328,7 @@ fixes against the benchmark — pay for inference once, then iterate for free.
 | `GENIEPARSE_PAGE_TIMEOUT` | `1200` | Seconds before a page counts as stuck |
 | `GENIEPARSE_SCRATCH_DIR` | system temp | Where per-page scratch goes |
 | `GENIEPARSE_DOLPHIN_CACHE` | `benchmark/dolphin-cache` | Where prewarmed Dolphin output lives |
-| `GENIEPARSE_USE_DOLPHIN_CACHE` | `1` | Set to `0` to force inference per page (the cache does not engage yet either way) |
+| `GENIEPARSE_USE_DOLPHIN_CACHE` | `1` | Set to `0` to force inference per page, ignoring the cache |
 
 ## First measured results
 
