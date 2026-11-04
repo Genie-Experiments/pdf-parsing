@@ -161,7 +161,7 @@ make bench-report
 make bench-leaderboard
 ```
 
-### Prewarming — take the model load out of the run
+### Prewarming — works, but not yet trustworthy for a scored run
 
 ```bash
 make bench-prewarm
@@ -198,12 +198,33 @@ file with a generated name, `101cf170df9ba6d4-form.pdf` — so a name-keyed cach
 would never match. Keying on the SHA-256 of the bytes also means two dataset
 entries holding the same page are inferred once.
 
-One consequence worth knowing about: Dolphin names figures after the input
-file, and the markdown links to them by that name — and that markdown is the
-text ParseBench scores. Cached output is therefore renamed back to the caller's
-stem on the way out, links rewritten to match, so the result is byte-identical
-to what inference would have produced. That equivalence is checked, not
-assumed; see below.
+Dolphin names figures after the input file, and the markdown links to them by
+that name — and that markdown is the text ParseBench scores. Cached output is
+therefore renamed back to the caller's stem on the way out, with the links
+rewritten to match.
+
+**Do not switch this on for a run whose scores you intend to rely on.** Called
+directly, a cached page reproduces uncached output byte for byte, on pages with
+figures and on pages whose headings get rewritten. Run through the
+`genieparse-bench` CLI it does not: on the 12-page smoke set, 4 pages come back
+with heading levels one deeper than an uncached run — `## APPLICATIONS
+INFORMATION` where inference gives `# APPLICATIONS INFORMATION`. Two uncached
+CLI runs agree with each other, so the cache is the cause, and the same 4 pages
+differ on a clean repeat.
+
+ParseBench scored all 12 examples identically both times, so nothing observed
+so far moves a number. That is not the same as knowing why the markdown
+differs, and an unexplained difference in the text being graded is not
+something to carry into a multi-day run that informs a hardware decision.
+
+What is measured, and holds:
+
+| | |
+|---|---|
+| Cached page, called directly | byte-identical to uncached |
+| Cached page via the CLI | 4 of 12 differ in heading level |
+| ParseBench scores, cached vs uncached | identical, 12 of 12, twice |
+| Smoke run inference time | 512.1s → 6.9s |
 
 Prewarming is safe to interrupt. Dolphin writes each page as it finishes, so a
 killed pass loses only the page in flight — everything already cached stays,
@@ -211,8 +232,7 @@ and re-running re-chunks what is left. `CHUNK` therefore only trades model
 loads against chunk granularity: at the default 50, a full run pays 42 loads
 instead of 2,078.
 
-To confirm the cache is not changing results on your own dataset, run the same
-pages both ways and diff:
+To compare both ways on your own dataset:
 
 ```bash
 GENIEPARSE_USE_DOLPHIN_CACHE=0 make bench-run BENCH_OUTPUT=output-nocache

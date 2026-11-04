@@ -301,9 +301,10 @@ bench-rescore:
 	  $(if $(GROUP),--group $(GROUP),)
 
 ## Pre-compute Dolphin inference, loading the model once per chunk instead of
-## once per page. The per-page cold start is ~5s (mostly importing torch and
-## transformers); on CPU that hides behind inference, on a GPU it does not.
-## Safe to interrupt — cached pages stay, so re-running resumes.
+## once per page -- the per-page cold start is ~5s, which a GPU does not reduce.
+## NOT yet safe for a scored run: via the CLI, 4 of 12 smoke pages come back
+## with different heading levels. Scores matched, the cause is not understood.
+## See the prewarming section in benchmark/README.md.
 ##   make bench-prewarm CHUNK=100
 CHUNK ?= 50
 bench-prewarm: bench-preflight bench-data
