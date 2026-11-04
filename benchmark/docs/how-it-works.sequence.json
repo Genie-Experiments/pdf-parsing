@@ -3,27 +3,17 @@
   "diagram_type": "sequence",
   "meta": {
     "title": "GenieParse on ParseBench-Platform - who does what, page by page",
-    "output": ".archify/sequence-genieparse-parsebench-20261103-164203/genieparse-parsebench.html",
+    "output": ".archify/sequence-genieparse-parsebench-20261104-142600/genieparse-parsebench.html",
     "column_fit": "spread",
     "quality_profile": "showcase",
     "legend": {
       "mode": "all",
       "entries": {
-        "default": {
-          "label": "Plain call"
-        },
-        "emphasis": {
-          "label": "Key step"
-        },
-        "dashed": {
-          "label": "Lookup or read"
-        },
-        "return": {
-          "label": "Reply"
-        },
-        "security": {
-          "label": "Failure"
-        }
+        "default": { "label": "Plain call" },
+        "emphasis": { "label": "Key step" },
+        "dashed": { "label": "Lookup or read" },
+        "return": { "label": "Reply" },
+        "security": { "label": "Failure" }
       }
     }
   },
@@ -76,31 +66,11 @@
     }
   ],
   "segments": [
-    {
-      "from": 190,
-      "to": 280,
-      "label": "Start the run"
-    },
-    {
-      "from": 310,
-      "to": 540,
-      "label": "Every page: skip it, or parse it"
-    },
-    {
-      "from": 570,
-      "to": 660,
-      "label": "When a page fails"
-    },
-    {
-      "from": 690,
-      "to": 780,
-      "label": "After the last page"
-    },
-    {
-      "from": 810,
-      "to": 872,
-      "label": "Any time, even mid-run"
-    }
+    { "from": 190, "to": 280, "label": "Start the run" },
+    { "from": 310, "to": 596, "label": "Every page: skip it, or parse it" },
+    { "from": 626, "to": 744, "label": "When a page fails" },
+    { "from": 774, "to": 920, "label": "After the last page" },
+    { "from": 950, "to": 1012, "label": "Any time, even mid-run" }
   ],
   "messages": [
     {
@@ -116,7 +86,7 @@
       "from": "bench",
       "to": "data",
       "y": 238,
-      "label": "load the benchmark set",
+      "label": "load the page set",
       "variant": "dashed"
     },
     {
@@ -124,7 +94,7 @@
       "from": "data",
       "to": "bench",
       "y": 266,
-      "label": "2,078 pages, ~169k fixed rules",
+      "label": "2,078 PDFs",
       "variant": "return"
     },
     {
@@ -176,18 +146,34 @@
       "variant": "return"
     },
     {
-      "id": "hand",
+      "id": "rawback",
       "from": "provider",
       "to": "bench",
       "y": 498,
-      "label": "ParseOutput, tables back as HTML",
+      "label": "RawInferenceResult",
+      "variant": "return"
+    },
+    {
+      "id": "norm",
+      "from": "bench",
+      "to": "provider",
+      "y": 526,
+      "label": "normalize(raw) - second call",
+      "variant": "emphasis"
+    },
+    {
+      "id": "parsed",
+      "from": "provider",
+      "to": "bench",
+      "y": 554,
+      "label": "ParseOutput, tables as HTML",
       "variant": "return"
     },
     {
       "id": "write",
       "from": "bench",
       "to": "results",
-      "y": 526,
+      "y": 582,
       "label": "write <page>.result.json",
       "variant": "emphasis"
     },
@@ -195,31 +181,55 @@
       "id": "fail",
       "from": "pipeline",
       "to": "provider",
-      "y": 590,
-      "label": "non-zero exit, OOM, or timeout",
+      "y": 646,
+      "label": "crash, OOM, or timeout",
       "variant": "security"
     },
     {
-      "id": "transient",
+      "id": "classify",
       "from": "provider",
       "to": "bench",
-      "y": 618,
-      "label": "transient: retry 5x, 2s up to 32s",
+      "y": 674,
+      "label": "raises transient or permanent",
+      "variant": "return"
+    },
+    {
+      "id": "retry",
+      "from": "bench",
+      "to": "provider",
+      "y": 702,
+      "label": "transient: calls again, up to 5x",
       "variant": "dashed"
     },
     {
-      "id": "permanent",
-      "from": "provider",
-      "to": "bench",
-      "y": 646,
-      "label": "permanent: _errors.json, move on",
+      "id": "logged",
+      "from": "bench",
+      "to": "results",
+      "y": 730,
+      "label": "permanent: _errors.json, no result",
       "variant": "dashed"
+    },
+    {
+      "id": "loadrules",
+      "from": "bench",
+      "to": "data",
+      "y": 794,
+      "label": "now load the scoring rules",
+      "variant": "dashed"
+    },
+    {
+      "id": "rules",
+      "from": "data",
+      "to": "bench",
+      "y": 822,
+      "label": "~169k deterministic rules",
+      "variant": "return"
     },
     {
       "id": "readall",
       "from": "bench",
       "to": "results",
-      "y": 710,
+      "y": 850,
       "label": "read every result file",
       "variant": "dashed"
     },
@@ -227,15 +237,15 @@
       "id": "scored",
       "from": "results",
       "to": "bench",
-      "y": 738,
-      "label": "scored on fixed rules, no LLM judge",
+      "y": 878,
+      "label": "scored locally, no LLM judge",
       "variant": "return"
     },
     {
       "id": "report",
       "from": "bench",
       "to": "you",
-      "y": 766,
+      "y": 906,
       "label": "HTML report, CSV, leaderboard",
       "variant": "emphasis"
     },
@@ -243,75 +253,37 @@
       "id": "status",
       "from": "you",
       "to": "results",
-      "y": 830,
-      "label": "make bench-status: counts the files",
+      "y": 970,
+      "label": "make bench-status: counts files",
       "variant": "dashed"
     },
     {
       "id": "rescore",
       "from": "you",
       "to": "bench",
-      "y": 858,
+      "y": 998,
       "label": "make bench-rescore: skips Dolphin",
       "variant": "dashed"
     }
   ],
   "activations": [
-    {
-      "participant": "bench",
-      "from": 206,
-      "to": 770,
-      "type": "backend"
-    },
-    {
-      "participant": "data",
-      "from": 234,
-      "to": 270,
-      "type": "backend"
-    },
-    {
-      "participant": "results",
-      "from": 326,
-      "to": 742,
-      "type": "backend"
-    },
-    {
-      "participant": "provider",
-      "from": 354,
-      "to": 650,
-      "type": "database"
-    },
-    {
-      "participant": "pipeline",
-      "from": 382,
-      "to": 594,
-      "type": "database"
-    },
-    {
-      "participant": "dolphin",
-      "from": 410,
-      "to": 446,
-      "type": "database"
-    },
-    {
-      "participant": "results",
-      "from": 826,
-      "to": 846,
-      "type": "backend"
-    },
-    {
-      "participant": "bench",
-      "from": 854,
-      "to": 870,
-      "type": "backend"
-    }
+    { "participant": "bench", "from": 206, "to": 910, "type": "backend" },
+    { "participant": "data", "from": 234, "to": 270, "type": "backend" },
+    { "participant": "results", "from": 326, "to": 886, "type": "backend" },
+    { "participant": "provider", "from": 354, "to": 734, "type": "database" },
+    { "participant": "pipeline", "from": 382, "to": 474, "type": "database" },
+    { "participant": "dolphin", "from": 410, "to": 446, "type": "database" },
+    { "participant": "pipeline", "from": 642, "to": 678, "type": "database" },
+    { "participant": "data", "from": 790, "to": 826, "type": "backend" },
+    { "participant": "results", "from": 966, "to": 986, "type": "backend" },
+    { "participant": "bench", "from": 994, "to": 1014, "type": "backend" }
   ],
   "cards": [
     {
       "dot": "violet",
       "title": "GenieParse - the violet lifelines",
       "items": [
-        "Provider: our adapter, the only thing ParseBench ever calls",
+        "Provider: parses on the first call, normalises on the second",
         "Pipeline: main.py, Dolphin plus nine post-processing steps",
         "Dolphin: the ByteDance layout model, and ~100% of the runtime"
       ]
@@ -320,8 +292,8 @@
       "dot": "emerald",
       "title": "ParseBench-Platform - the green lifelines",
       "items": [
-        "parse-bench: drives the run, one page at a time",
-        "Dataset: 2,078 pages from 1,211 docs, ~169k fixed rules",
+        "parse-bench: drives the run, and owns the retry loop",
+        "Dataset: 2,078 pages for parsing, ~169k rules for scoring",
         "Result files: one per page, written as the run goes"
       ]
     },
@@ -331,7 +303,7 @@
       "items": [
         "Dolphin is the whole cost, so bench-rescore is the cheap loop",
         "Progress lives in result files, not memory, so a crash resumes",
-        "Provider is the one seam: swap it and the green side never knows"
+        "A failed page writes none, so the next run picks it up again"
       ]
     }
   ]
