@@ -339,23 +339,46 @@ human-verified enterprise pages, graded by deterministic rules across tables,
 charts, content faithfulness, semantic formatting and visual grounding.
 
 Dolphin inference is effectively the whole runtime and is hardware-bound, so
-measure a page on the target machine before starting a full run:
+measure a page on the target machine before starting a full run. From a fresh
+clone, three commands:
 
 ```bash
-make bench-setup           # pipeline + weights + benchmark deps
-make bench-download-test   # 12-page subset
-make bench-calibrate       # seconds per page + projected full-run time
-make bench-test            # smoke test end to end
+make bench-setup      # submodules, deps, and the 770 MB Dolphin weights
+```
 
-make bench-download        # full 2,078-page dataset
-make bench-run-bg          # full run, detached — survives logout
-make bench-status          # pages done, and whether it is still running
-make bench-stop            # stop it; finished pages are kept
+```bash
+make bench-calibrate  # times real pages here, projects the full run
+```
+
+```bash
+make bench-run        # the full 2,078-page benchmark
+```
+
+The only prerequisite is [uv](https://docs.astral.sh/uv/getting-started/installation/);
+`make bench-setup` stops with install instructions if it is missing. The dataset
+is not in git, so `bench-calibrate` and `bench-run` fetch what they need on
+first use — the 12-page smoke set and the full set respectively.
+
+Read the calibration before committing to a full run. Measured on an Apple M3,
+a page takes 45s to 81s depending on how dense it is, which puts the full set
+somewhere between one and two days on a single worker — and more workers are
+not always faster, since each one loads its own copy of the model.
+
+For a run you cannot babysit:
+
+```bash
+make bench-run-bg     # detached — survives logout and dropped connections
+make bench-status     # pages done per dimension, and whether it is alive
+make bench-stop       # stop it; finished pages are kept
 ```
 
 A full run takes hours, so it is interruptible: every finished page is written
 to its own result file, and re-running skips what is already done. A crash, a
 reboot or a dropped connection costs you the page in flight, not the run.
+
+[`benchmark/docs/how-it-works.html`](benchmark/docs/how-it-works.html) is a
+sequence diagram of the whole exchange — open it in a browser to see which
+component is ours and which belongs to the platform.
 
 See [`benchmark/README.md`](benchmark/README.md) for tuning concurrency, scoring
 one dimension at a time, re-scoring without re-running inference, and the known

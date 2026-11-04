@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "GenieParse on ParseBench-Platform - who does what, page by page",
+    "output": ".archify/sequence-genieparse-parsebench-20261103-164203/genieparse-parsebench.html",
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "all",
+      "entries": {
+        "default": {
+          "label": "Plain call"
+        },
+        "emphasis": {
+          "label": "Key step"
+        },
+        "dashed": {
+          "label": "Lookup or read"
+        },
+        "return": {
+          "label": "Reply"
+        },
+        "security": {
+          "label": "Failure"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "you",
+      "type": "external",
+      "label": "You",
+      "sublabel": "operator",
+      "icon": "person"
+    },
+    {
+      "id": "bench",
+      "type": "backend",
+      "label": "parse-bench",
+      "sublabel": "ParseBench-Platform"
+    },
+    {
+      "id": "data",
+      "type": "backend",
+      "label": "Dataset",
+      "sublabel": "ParseBench-Platform"
+    },
+    {
+      "id": "results",
+      "type": "backend",
+      "label": "Result files",
+      "sublabel": "ParseBench-Platform"
+    },
+    {
+      "id": "provider",
+      "type": "database",
+      "label": "Provider",
+      "sublabel": "GenieParse",
+      "icon": "none"
+    },
+    {
+      "id": "pipeline",
+      "type": "database",
+      "label": "Pipeline",
+      "sublabel": "GenieParse",
+      "icon": "none"
+    },
+    {
+      "id": "dolphin",
+      "type": "database",
+      "label": "Dolphin",
+      "sublabel": "GenieParse",
+      "icon": "none"
+    }
+  ],
+  "segments": [
+    {
+      "from": 190,
+      "to": 280,
+      "label": "Start the run"
+    },
+    {
+      "from": 310,
+      "to": 540,
+      "label": "Every page: skip it, or parse it"
+    },
+    {
+      "from": 570,
+      "to": 660,
+      "label": "When a page fails"
+    },
+    {
+      "from": 690,
+      "to": 780,
+      "label": "After the last page"
+    },
+    {
+      "from": 810,
+      "to": 872,
+      "label": "Any time, even mid-run"
+    }
+  ],
+  "messages": [
+    {
+      "id": "start",
+      "from": "you",
+      "to": "bench",
+      "y": 210,
+      "label": "make bench-run",
+      "variant": "emphasis"
+    },
+    {
+      "id": "load",
+      "from": "bench",
+      "to": "data",
+      "y": 238,
+      "label": "load the benchmark set",
+      "variant": "dashed"
+    },
+    {
+      "id": "set",
+      "from": "data",
+      "to": "bench",
+      "y": 266,
+      "label": "2,078 pages, ~169k fixed rules",
+      "variant": "return"
+    },
+    {
+      "id": "resume",
+      "from": "bench",
+      "to": "results",
+      "y": 330,
+      "label": "result file there? skip the page",
+      "variant": "dashed"
+    },
+    {
+      "id": "ask",
+      "from": "bench",
+      "to": "provider",
+      "y": 358,
+      "label": "run_inference(page.pdf)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "spawn",
+      "from": "provider",
+      "to": "pipeline",
+      "y": 386,
+      "label": "subprocess, own venv, own scratch",
+      "variant": "default"
+    },
+    {
+      "id": "infer",
+      "from": "pipeline",
+      "to": "dolphin",
+      "y": 414,
+      "label": "step 1: layout inference",
+      "variant": "emphasis"
+    },
+    {
+      "id": "raw",
+      "from": "dolphin",
+      "to": "pipeline",
+      "y": 442,
+      "label": "boxes + raw markdown, 81.0s",
+      "variant": "return"
+    },
+    {
+      "id": "clean",
+      "from": "pipeline",
+      "to": "provider",
+      "y": 470,
+      "label": "steps 2-10 tidy it up, 0.2s",
+      "variant": "return"
+    },
+    {
+      "id": "hand",
+      "from": "provider",
+      "to": "bench",
+      "y": 498,
+      "label": "ParseOutput, tables back as HTML",
+      "variant": "return"
+    },
+    {
+      "id": "write",
+      "from": "bench",
+      "to": "results",
+      "y": 526,
+      "label": "write <page>.result.json",
+      "variant": "emphasis"
+    },
+    {
+      "id": "fail",
+      "from": "pipeline",
+      "to": "provider",
+      "y": 590,
+      "label": "non-zero exit, OOM, or timeout",
+      "variant": "security"
+    },
+    {
+      "id": "transient",
+      "from": "provider",
+      "to": "bench",
+      "y": 618,
+      "label": "transient: retry 5x, 2s up to 32s",
+      "variant": "dashed"
+    },
+    {
+      "id": "permanent",
+      "from": "provider",
+      "to": "bench",
+      "y": 646,
+      "label": "permanent: _errors.json, move on",
+      "variant": "dashed"
+    },
+    {
+      "id": "readall",
+      "from": "bench",
+      "to": "results",
+      "y": 710,
+      "label": "read every result file",
+      "variant": "dashed"
+    },
+    {
+      "id": "scored",
+      "from": "results",
+      "to": "bench",
+      "y": 738,
+      "label": "scored on fixed rules, no LLM judge",
+      "variant": "return"
+    },
+    {
+      "id": "report",
+      "from": "bench",
+      "to": "you",
+      "y": 766,
+      "label": "HTML report, CSV, leaderboard",
+      "variant": "emphasis"
+    },
+    {
+      "id": "status",
+      "from": "you",
+      "to": "results",
+      "y": 830,
+      "label": "make bench-status: counts the files",
+      "variant": "dashed"
+    },
+    {
+      "id": "rescore",
+      "from": "you",
+      "to": "bench",
+      "y": 858,
+      "label": "make bench-rescore: skips Dolphin",
+      "variant": "dashed"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "bench",
+      "from": 206,
+      "to": 770,
+      "type": "backend"
+    },
+    {
+      "participant": "data",
+      "from": 234,
+      "to": 270,
+      "type": "backend"
+    },
+    {
+      "participant": "results",
+      "from": 326,
+      "to": 742,
+      "type": "backend"
+    },
+    {
+      "participant": "provider",
+      "from": 354,
+      "to": 650,
+      "type": "database"
+    },
+    {
+      "participant": "pipeline",
+      "from": 382,
+      "to": 594,
+      "type": "database"
+    },
+    {
+      "participant": "dolphin",
+      "from": 410,
+      "to": 446,
+      "type": "database"
+    },
+    {
+      "participant": "results",
+      "from": 826,
+      "to": 846,
+      "type": "backend"
+    },
+    {
+      "participant": "bench",
+      "from": 854,
+      "to": 870,
+      "type": "backend"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "GenieParse - the violet lifelines",
+      "items": [
+        "Provider: our adapter, the only thing ParseBench ever calls",
+        "Pipeline: main.py, Dolphin plus nine post-processing steps",
+        "Dolphin: the ByteDance layout model, and ~100% of the runtime"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "ParseBench-Platform - the green lifelines",
+      "items": [
+        "parse-bench: drives the run, one page at a time",
+        "Dataset: 2,078 pages from 1,211 docs, ~169k fixed rules",
+        "Result files: one per page, written as the run goes"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "The three things worth remembering",
+      "items": [
+        "Dolphin is the whole cost, so bench-rescore is the cheap loop",
+        "Progress lives in result files, not memory, so a crash resumes",
+        "Provider is the one seam: swap it and the green side never knows"
+      ]
+    }
+  ]
+}

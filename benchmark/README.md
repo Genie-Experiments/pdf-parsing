@@ -24,6 +24,12 @@ directory, because steps 2–10 write shared state under `_pipeline/`.
 every `parse-bench` subcommand works, so consult the upstream docs for anything
 not covered here.
 
+[`docs/how-it-works.html`](docs/how-it-works.html) draws the whole exchange as a
+sequence diagram — open it in a browser. Violet lifelines are ours, green belong
+to the ParseBench platform, and the single seam between them is the provider.
+[`docs/how-it-works.sequence.json`](docs/how-it-works.sequence.json) is the
+source it was rendered from.
+
 ## Setup on a new machine
 
 ```bash
@@ -31,16 +37,24 @@ make bench-setup
 ```
 
 Installs the pipeline (submodules, ML deps), downloads the ~770 MB Dolphin
-weights into `pipeline/hf_model/`, and installs the benchmark package. On an
-NVIDIA host run `make setup-pipeline-gpu` first — Dolphin uses CUDA when it is
-available and CPU otherwise.
+weights into `pipeline/hf_model/`, and installs the benchmark package. It needs
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and stops with
+install instructions if it is missing. On an NVIDIA host run
+`make setup-pipeline-gpu` first — Dolphin uses CUDA when it is available and
+CPU otherwise.
 
-Then fetch the dataset:
+The dataset lives outside git, and `make bench-calibrate` and `make bench-run`
+fetch what they need the first time they are run, so neither needs a download
+step in front of it. To pre-fetch it deliberately — on a metered connection, or
+to warm a machine before a scheduled run:
 
 ```bash
 make bench-download-test   # 12 PDFs, for a smoke test
 make bench-download        # the full 2,078-page set
 ```
+
+The automatic fetch only fires on an empty dataset directory, so downloading a
+single dimension by hand is never undone by a later `make bench-run`.
 
 ## 1. Calibrate — what will this cost here?
 
@@ -51,9 +65,6 @@ so time a page before committing to a full run:
 make bench-calibrate
 make bench-calibrate RUNS=3 BENCH_CONCURRENCY=4
 ```
-
-This reports the device Dolphin selected, seconds per page, and a projected
-wall-clock time for the full benchmark, and writes `benchmark/calibration.json`.
 
 It reports the device Dolphin selected, seconds per page, a projected
 wall-clock time, and — when `BENCH_CONCURRENCY` is above 1 — a single-worker

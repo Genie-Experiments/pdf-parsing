@@ -9,7 +9,9 @@ SHELL := /bin/bash
         dev-api dev-worker dev-frontend dev-pipeline dev \
         docker-up docker-down \
         set-quota \
+        check-uv \
         bench-install bench-setup bench-download bench-download-test \
+        bench-data bench-data-test bench-preflight \
         bench-calibrate bench-test bench-run bench-rescore \
         bench-leaderboard bench-report \
         bench-run-bg bench-status bench-watch bench-stop bench-retry-failed
@@ -19,11 +21,26 @@ SHELL := /bin/bash
 submodules:
 	git submodule update --init --recursive
 
+# Everything here runs through uv. One clear message beats a confusing failure
+# several targets deep on a machine that has never had it.
+check-uv:
+	@command -v uv >/dev/null 2>&1 || { \
+	  echo "uv is not installed, and every target here needs it. Install it with:"; \
+	  echo "    curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+	  echo "    brew install uv"; \
+	  exit 1; \
+	}
+
+# Called through the library rather than a console script: huggingface-hub
+# renamed `huggingface-cli` to `hf` in 1.0 and the old name now exits 1, so
+# either console script breaks on some pinned version. The function does not.
 model:
 	@if [ -d pipeline/hf_model ] && [ "$$(ls -A pipeline/hf_model 2>/dev/null)" ]; then \
 	  echo "Model weights already present at pipeline/hf_model/ — skipping download."; \
 	else \
-	  cd pipeline && uv run huggingface-cli download ByteDance/Dolphin-1.5 --local-dir ./hf_model; \
+	  echo "Downloading the ~770 MB Dolphin weights into pipeline/hf_model/ ..."; \
+	  cd pipeline && uv run python -c "from huggingface_hub import snapshot_download; \
+	    snapshot_download('ByteDance/Dolphin-1.5', local_dir='./hf_model')"; \
 	fi
 
 install-pipeline:
@@ -190,7 +207,10 @@ bench-install:
 	cd benchmark && uv sync
 
 # Pipeline venv + model weights + benchmark deps — everything a fresh machine needs.
-bench-setup: setup-pipeline bench-install
+bench-setup: check-uv submodules install-pipeline model bench-install
+	@echo
+	@echo "Setup done. Next: 'make bench-calibrate' to time this machine,"
+	@echo "then 'make bench-run' for the full benchmark."
 
 bench-download:
 	$(BENCH_RUN) download
@@ -198,17 +218,45 @@ bench-download:
 bench-download-test:
 	$(BENCH_RUN) download --test
 
+# Without the pipeline venv the provider falls back to a bare system python that
+# has no torch, and without the weights Dolphin cannot load — either way every
+# page fails the same way, for as long as the run lasts. Say so once, up front.
+bench-preflight:
+	@test -x pipeline/.venv/bin/python || { \
+	  echo "The pipeline virtualenv is missing — run 'make bench-setup' first."; \
+	  exit 1; \
+	}
+	@test -n "$$(ls -A pipeline/hf_model 2>/dev/null)" || { \
+	  echo "The Dolphin weights are missing — run 'make bench-setup' first."; \
+	  exit 1; \
+	}
+
+# The dataset is not in git, so calibrate and run fetch what they need on first
+# use and stay one command each on a fresh clone. Both guards only fire on an
+# empty directory, so a deliberate single-group download is never re-pulled.
+bench-data-test:
+	@cd benchmark && if [ -z "$$(find data/test -name '*.pdf' -print -quit 2>/dev/null)" ]; then \
+	  echo "No test subset yet — fetching the 12-page smoke set."; \
+	  uv run genieparse-bench download --test; \
+	fi
+
+bench-data:
+	@cd benchmark && if [ -z "$$(find data/docs -name '*.pdf' -print -quit 2>/dev/null)" ]; then \
+	  echo "No dataset yet — fetching the full 2,078-page ParseBench set."; \
+	  uv run genieparse-bench download; \
+	fi
+
 ## Time one page on this machine and project a full run.
 ##   make bench-calibrate RUNS=3
 RUNS ?= 1
-bench-calibrate:
+bench-calibrate: bench-preflight bench-data-test
 	cd benchmark && uv run python -m genieparse_bench.calibrate \
 	  --runs $(RUNS) --concurrency $(BENCH_CONCURRENCY)
 
 ## Smoke test on the small dataset (3 files per category) before a full run.
 ## Writes to its own directory so it cannot seed the real run with results.
 BENCH_TEST_OUTPUT ?= output-test
-bench-test:
+bench-test: bench-preflight bench-data-test
 	$(BENCH_RUN) run $(BENCH_PIPELINE) --test \
 	  --output_dir $(BENCH_TEST_OUTPUT) \
 	  --max_concurrent $(BENCH_CONCURRENCY) --open_report=False
@@ -216,7 +264,7 @@ bench-test:
 ## Full benchmark. Results land in benchmark/$(BENCH_OUTPUT)/$(BENCH_PIPELINE)/.
 ##   make bench-run BENCH_CONCURRENCY=4
 ##   make bench-run GROUP=table
-bench-run:
+bench-run: bench-preflight bench-data
 	$(BENCH_RUN) run $(BENCH_PIPELINE) \
 	  --output_dir $(BENCH_OUTPUT) \
 	  --max_concurrent $(BENCH_CONCURRENCY) \
@@ -250,7 +298,7 @@ BENCH_PID ?= run.pid
 ## `set -m` puts the run in its own process group so bench-stop can take the
 ## whole tree down; $$! must be read in the same shell that did the cd, or the
 ## pid file lands in the wrong directory and records the wrong process.
-bench-run-bg:
+bench-run-bg: bench-preflight bench-data
 	@cd benchmark; \
 	  mkdir -p $(dir $(BENCH_LOG)); \
 	  if [ -f $(BENCH_PID) ] && kill -0 $$(cat $(BENCH_PID)) 2>/dev/null; then \
